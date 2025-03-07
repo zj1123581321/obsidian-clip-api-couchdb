@@ -1,0 +1,25 @@
+# 配置文件
+config.yaml
+*.yaml
+*.yml
+*.json
+
+# 调试文件
+debug/
+__pycache__/
+*.pyc
+
+# 虚拟环境
+venv/
+env/
+.env
+
+# 版本控制
+.git/
+.gitignore
+
+# 其他敏感文件
+*.log
+*.key
+*.pem
+*.cert 

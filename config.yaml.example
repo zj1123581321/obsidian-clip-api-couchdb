@@ -1,0 +1,40 @@
+name: obsidian-clip-api-couchdb
+version: v1.0.0
+description: 网页剪藏 API 服务
+
+# 服务配置
+host: 0.0.0.0
+port: 8901
+
+# API 鉴权配置
+api:
+  enabled: true  # 是否启用 API 鉴权
+  key: "your-secret-api-key-here"  # API 密钥
+
+# CouchDB 配置
+couchdb:
+  url: "http://your-couchdb-url:5984/"  # CouchDB 服务器地址
+  db_name: "your-db-name"  # 数据库名称
+
+# 企业微信配置
+work_wechat:
+  corp_id: "your-corp-id"
+  agent_id: "your-agent-id"
+  corp_secret: "your-corp-secret"
+  token: ""  # 可选，如果需要接收消息
+  encoding_aes_key: ""  # 可选，如果需要接收消息
+  user_id: ""  # 可选，指定接收消息的用户
+  at_all: true  # 是否 @所有人
+
+# PicGo 配置
+picgo:
+  enabled: false  # 是否启用图片上传到自己的图床
+  server: "http://your-picgo-server:36677"
+  upload_path: "/upload?key=your-upload-key"
+
+# Obsidian 配置
+obsidian:
+  clippings_path: "Clippings"  # 剪藏文章在 Obsidian 中的保存路径
+
+# 调试模式
+debug: false  # 生产环境建议关闭 

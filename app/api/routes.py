@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
 import asyncio
@@ -19,6 +19,35 @@ class ClipResponse(BaseModel):
     title: str
     doc_id: Optional[str] = None
     error: Optional[str] = None
+
+async def verify_api_key(x_api_key: str = Header(None)):
+    """验证 API 密钥
+    
+    Args:
+        x_api_key: 请求头中的 API 密钥
+        
+    Returns:
+        bool: 验证是否通过
+        
+    Raises:
+        HTTPException: 验证失败时抛出异常
+    """
+    # 检查是否启用 API 鉴权
+    if not config.get('api', {}).get('enabled', False):
+        return True
+        
+    # 获取配置的 API 密钥
+    api_key = config.get('api', {}).get('key')
+    if not api_key:
+        raise HTTPException(status_code=500, detail="API 密钥未配置")
+        
+    # 验证 API 密钥
+    if not x_api_key or x_api_key != api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="无效的 API 密钥"
+        )
+    return True
 
 def generate_yaml_front_matter(url: str, title: str, meta_info: dict) -> str:
     """生成 YAML front matter
@@ -52,8 +81,19 @@ created: {created}
 """
 
 @router.post("/clip", response_model=ClipResponse)
-async def clip_article(request: ClipRequest):
-    """剪藏文章 API"""
+async def clip_article(
+    request: ClipRequest,
+    verified: bool = Depends(verify_api_key)
+):
+    """剪藏文章 API
+    
+    Args:
+        request: 剪藏请求
+        verified: API 密钥验证结果
+        
+    Returns:
+        ClipResponse: 剪藏结果
+    """
     try:
         # 发送剪藏开始通知
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
