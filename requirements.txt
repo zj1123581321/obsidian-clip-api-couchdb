@@ -3,11 +3,8 @@ uvicorn==0.27.1
 python-multipart==0.0.9
 requests==2.31.0
 beautifulsoup4==4.12.3
-html2text==2020.1.16
-python-dotenv==1.0.1
-pyyaml==6.0.1
+markdownify==0.11.6
+PyYAML==6.0.1
 aiohttp==3.9.3
 couchdb==1.2
-python-jose==3.3.0
 trafilatura==1.6.4
-markdownify==0.11.6
