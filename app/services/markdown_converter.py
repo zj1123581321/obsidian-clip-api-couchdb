@@ -120,6 +120,16 @@ class MarkdownConverter:
         
         return str(soup)
 
+    def _clean_wechat_content(self, html: str) -> str:
+        """清理微信公众号文章的额外内容"""
+        # 查找截断词的位置
+        cut_point = html.find("预览时标签不可点")
+        if cut_point == -1:
+            return html
+            
+        # 截取有效内容
+        return html[:cut_point].strip()
+
     def convert(self, html: str) -> Tuple[str, List[Tuple[str, str]]]:
         """将 HTML 转换为 Markdown，并提取图片信息"""
         try:
@@ -128,6 +138,9 @@ class MarkdownConverter:
             
             # 保存原始 HTML
             self._save_debug_file("debug_original.html", html)
+            
+            # 清理微信公众号文章的额外内容
+            html = self._clean_wechat_content(html)
             
             # 提取图片信息
             images = self._extract_images(html)
