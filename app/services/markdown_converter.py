@@ -75,29 +75,41 @@ class MarkdownConverter:
             if not span.get_text(strip=True):
                 span.decompose()
                 
-        # 移除所有 javascript: void(0) 链接
-        for a in soup.find_all('a', href=lambda x: x and 'javascript:' in x):
-            if a.get_text(strip=True):
-                a.unwrap()  # 保留文本内容
+        # 处理链接
+        for a in soup.find_all('a'):
+            href = a.get('href', '')
+            text = a.get_text(strip=True)
+            
+            if not href or 'javascript:' in href:
+                # 如果没有链接或是 javascript 链接，只保留文本
+                if text:
+                    a.replace_with(text)
+                else:
+                    a.decompose()
             else:
-                a.decompose()  # 完全移除
+                # 保留有效的链接，不修改链接文本
+                continue
 
-        # 处理 section 标签，确保每个 section 后有换行
+        # 处理 section 标签
         for section in soup.find_all('section'):
-            # 如果 section 内有 span，提取文本内容
-            span = section.find('span')
-            if span:
-                text = span.get_text()
-                # 创建新的文本节点
-                new_text = soup.new_string(text + '\n\n')
-                section.clear()
-                section.append(new_text)
-            # 如果没有 span，但有其他内容
-            elif section.get_text(strip=True):
-                text = section.get_text()
-                new_text = soup.new_string(text + '\n\n')
-                section.clear()
-                section.append(new_text)
+            # 检查 section 是否包含链接
+            links = section.find_all('a')
+            if links:
+                # 如果包含链接，保持原有结构，只添加换行
+                section.append(soup.new_string('\n\n'))
+            else:
+                # 如果不包含链接，提取文本内容
+                span = section.find('span')
+                if span:
+                    text = span.get_text()
+                    new_text = soup.new_string(text + '\n\n')
+                    section.clear()
+                    section.append(new_text)
+                elif section.get_text(strip=True):
+                    text = section.get_text()
+                    new_text = soup.new_string(text + '\n\n')
+                    section.clear()
+                    section.append(new_text)
 
         # 确保标题前后有换行
         for h in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
@@ -142,6 +154,9 @@ class MarkdownConverter:
                     'hr_mark': '---',  # 使用 --- 作为分隔线
                     'br_mark': '  \n',  # 使用两个空格加换行作为软换行
                     'strong_mark': '**',  # 使用 ** 作为加粗标记
+                    'link_brackets': True,  # 使用 [] 和 () 包裹链接
+                    'convert_links': True,  # 转换链接
+                    'keep_links': True,  # 保持链接
                 }
             )
             
