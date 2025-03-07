@@ -13,7 +13,7 @@ api:
 
 # CouchDB 配置
 couchdb:
-  url: "http://your-couchdb-url:5984/"  # CouchDB 服务器地址
+  url: "http://username:password@your-couchdb-host:5984/"  # 包含用户名和密码的 URL
   db_name: "your-db-name"  # 数据库名称
 
 # 企业微信配置

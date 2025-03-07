@@ -51,7 +51,7 @@ api:
 
 # CouchDB 配置
 couchdb:
-  url: "http://your-couchdb-url:5984/"
+  url: "http://username:password@your-couchdb-host:5984/"
   db_name: "your-db-name"
 
 # PicGo 配置
