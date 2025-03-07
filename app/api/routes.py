@@ -48,7 +48,6 @@ author: {meta_info.get('author', '')}
 published: {meta_info.get('date', '')}
 created: {created}
 ---
-[[ObSavePage]]
 
 """
 
