@@ -1,6 +1,6 @@
 # Obsidian Clip API
 
-一个用于剪藏网页到 Obsidian 的 API 服务。
+一个用于剪藏网页到 Obsidian 的 API 服务。项目基于 https://github.com/kkbt0/obcsapi-go 用 python 重写。
 
 ## 功能特点
 

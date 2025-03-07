@@ -12,12 +12,18 @@ class WebParser:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         self.debug_dir = "debug"
+        self.debug_seq = 1  # 调试文件序号
 
     def _save_debug_file(self, filename: str, content: str):
         """保存调试文件"""
         if config.debug:
             try:
                 os.makedirs(self.debug_dir, exist_ok=True)
+                # 添加序号前缀
+                base, ext = os.path.splitext(filename)
+                filename = f"{self.debug_seq:02d}_{base}{ext}"
+                self.debug_seq += 1
+                
                 filepath = os.path.join(self.debug_dir, filename)
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(content)

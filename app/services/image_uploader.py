@@ -40,19 +40,18 @@ class ImageUploader:
             except Exception as e:
                 self._log(f"保存调试文件失败: {str(e)}")
 
-    def _save_debug_image(self, filename: str, content: bytes):
-        """保存调试图片文件"""
+    def _save_debug_image(self, image_data: bytes, index: int, prefix: str = ""):
+        """保存调试图片"""
         if config.debug:
             try:
                 os.makedirs(self.debug_dir, exist_ok=True)
                 # 添加序号前缀
-                base, ext = os.path.splitext(filename)
-                filename = f"{self.debug_seq:02d}_{base}{ext}"
+                filename = f"{self.debug_seq:02d}_image_{prefix}{index}"
                 self.debug_seq += 1
                 
                 filepath = os.path.join(self.debug_dir, filename)
                 with open(filepath, 'wb') as f:
-                    f.write(content)
+                    f.write(image_data)
                 self._log(f"已保存调试图片: {filename}")
             except Exception as e:
                 self._log(f"保存调试图片失败: {str(e)}")
@@ -215,7 +214,7 @@ class ImageUploader:
                 
                 # 保存 URL 映射到调试文件
                 self._save_debug_file(
-                    "debug_url_mapping.json",
+                    "url_mapping.json",
                     json.dumps(url_mapping, ensure_ascii=False, indent=2)
                 )
                 
@@ -230,30 +229,31 @@ class ImageUploader:
 
     def replace_image_urls(self, markdown: str, url_mapping: Dict[str, str]) -> str:
         """替换 Markdown 中的图片 URL"""
-        start_time = time.time()
+        start_time = time.time()  # 使用局部变量
         self._log("开始替换图片 URL")
         
         # 保存替换前的 Markdown
-        self._save_debug_file("debug_before_replace.md", markdown)
+        self._save_debug_file("before_replace.md", markdown)
         
-        # 替换图片 URL
+        # 保存 URL 映射关系
+        self._save_debug_file("url_mapping.json", json.dumps(url_mapping, indent=2, ensure_ascii=False))
+        
+        # 替换每个图片 URL
         for old_url, new_url in url_mapping.items():
-            # 处理不同的图片格式
-            patterns = [
-                (f'!\\[([^\\]]*)\\]\\({re.escape(old_url)}\\)', f'![\\1]({new_url})'),  # 带 alt 的图片
-                (f'!\\[\\]\\({re.escape(old_url)}\\)', f'![]({new_url})'),  # 无 alt 的图片
-                (re.escape(old_url), new_url)  # 直接 URL
-            ]
-            
-            for pattern, replacement in patterns:
-                markdown = re.sub(pattern, replacement, markdown)
-                
             self._log(f"替换图片 URL: {old_url} -> {new_url}")
+            # 使用正则表达式替换图片 URL
+            old_url_escaped = re.escape(old_url)
+            # 替换带 alt 文本的图片
+            markdown = re.sub(f'!\\[(.*?)\\]\\({old_url_escaped}\\)', f'![\\1]({new_url})', markdown)
+            # 替换不带 alt 文本的图片
+            markdown = re.sub(f'!\\[\\]\\({old_url_escaped}\\)', f'![]({new_url})', markdown)
+            # 替换直接的 URL
+            markdown = markdown.replace(old_url, new_url)
         
-        # 保存替换后的 Markdown
-        self._save_debug_file("debug_final.md", markdown)
+        # 保存最终的 Markdown
+        self._save_debug_file("final.md", markdown)
         
-        elapsed = time.time() - start_time
+        elapsed = time.time() - start_time  # 使用局部变量计算耗时
         self._log(f"URL 替换完成，耗时: {elapsed:.2f}秒")
         
         return markdown
