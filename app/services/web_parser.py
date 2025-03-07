@@ -56,8 +56,73 @@ class WebParser:
         html = re.sub(r'data-src="([^"]*)"', r'src="\1"', html)
         return html
 
-    def parse_url(self, url: str) -> Tuple[str, str, str]:
-        """解析网页内容，返回标题、HTML 和清理后的 HTML"""
+    def _extract_meta_info(self, html: str) -> dict:
+        """提取页面元数据信息"""
+        import re
+        
+        soup = BeautifulSoup(html, 'html.parser')
+        meta_info = {
+            'author': '',
+            'date': '',
+            'description': ''
+        }
+        
+        # 1. 提取作者信息
+        # 尝试多种可能的 meta 标签
+        author_meta = (
+            soup.find('meta', {'name': 'author'}) or
+            soup.find('meta', {'property': 'og:article:author'}) or
+            soup.find('meta', {'property': 'article:author'}) or
+            soup.find('meta', {'name': 'twitter:creator'})
+        )
+        if author_meta:
+            meta_info['author'] = author_meta.get('content', '')
+        
+        # 2. 提取发布日期
+        # 尝试多种可能的 meta 标签
+        date_meta = (
+            soup.find('meta', {'name': 'article:published_time'}) or
+            soup.find('meta', {'property': 'article:published_time'}) or
+            soup.find('meta', {'name': 'publishedDate'}) or
+            soup.find('meta', {'name': 'date'})
+        )
+        if date_meta:
+            meta_info['date'] = date_meta.get('content', '')
+            
+        # 如果没有找到日期，尝试在页面中查找日期格式的文本
+        if not meta_info['date']:
+            # 匹配常见的日期格式
+            date_patterns = [
+                r'\d{4}-\d{2}-\d{2}',  # YYYY-MM-DD
+                r'\d{4}/\d{2}/\d{2}',  # YYYY/MM/DD
+                r'\d{4}年\d{2}月\d{2}日'  # YYYY年MM月DD日
+            ]
+            for pattern in date_patterns:
+                if match := re.search(pattern, html):
+                    meta_info['date'] = match.group()
+                    break
+        
+        # 3. 提取描述信息
+        # 尝试多种可能的 meta 标签
+        description_meta = (
+            soup.find('meta', {'name': 'description'}) or
+            soup.find('meta', {'property': 'og:description'}) or
+            soup.find('meta', {'name': 'twitter:description'})
+        )
+        if description_meta:
+            meta_info['description'] = description_meta.get('content', '')
+        
+        # 4. 微信公众号特殊处理
+        if 'mp.weixin.qq.com' in html:
+            # 微信公众号的发布时间通常在 JS 变量中
+            publish_time_match = re.search(r'var publish_time = "([^"]+)"', html)
+            if publish_time_match:
+                meta_info['date'] = publish_time_match.group(1)
+        
+        return meta_info
+
+    def parse_url(self, url: str) -> tuple:
+        """解析网页内容，返回标题、HTML、清理后的HTML和元数据"""
         try:
             notifier.send_progress("开始解析网页", f"正在获取网页内容: {url}")
             
@@ -68,17 +133,18 @@ class WebParser:
             cleaned_html = self._clean_html(html)
             
             # 保存原始 HTML
-            self._save_debug_file("debug_original.html", html)
-            self._save_debug_file("debug_cleaned.html", cleaned_html)
+            self._save_debug_file("web_original.html", html)
+            self._save_debug_file("web_cleaned.html", cleaned_html)
             
-            soup = BeautifulSoup(cleaned_html, 'html.parser')
-            title = self._extract_title(soup)
+            # 提取标题和元数据
+            title = self._extract_title(BeautifulSoup(cleaned_html, 'html.parser'))
+            meta_info = self._extract_meta_info(html)
             
             if not title:
                 title = "未命名文章"
                 notifier.send_progress("警告", "未能提取到文章标题，使用默认标题")
             
-            return title, html, cleaned_html
+            return title, html, cleaned_html, meta_info
             
         except requests.RequestException as e:
             error_msg = f"获取网页内容失败: {str(e)}"

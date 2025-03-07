@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
 import asyncio
+from datetime import datetime
 from ..services.web_parser import web_parser
 from ..services.markdown_converter import markdown_converter
 from ..services.image_uploader import image_uploader
@@ -19,12 +20,44 @@ class ClipResponse(BaseModel):
     doc_id: Optional[str] = None
     error: Optional[str] = None
 
+def generate_yaml_front_matter(url: str, title: str, meta_info: dict) -> str:
+    """生成 YAML front matter
+    
+    Args:
+        url: 原文链接
+        title: 文章标题
+        meta_info: 元数据信息，包含 author、date、description
+        
+    Returns:
+        str: YAML front matter 文本，包含以下属性（按顺序）：
+        - url: 原文链接
+        - title: 文章标题
+        - description: 文章描述
+        - author: 文章作者
+        - published: 文章发布日期
+        - created: 剪藏时间（Obsidian 格式）
+    """
+    # 使用 Obsidian 格式的时间戳：YYYY-MM-DD HH:mm
+    created = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    return f"""---
+url: {url}
+title: {title}
+description: {meta_info.get('description', '')}
+author: {meta_info.get('author', '')}
+published: {meta_info.get('date', '')}
+created: {created}
+---
+[[ObSavePage]]
+
+"""
+
 @router.post("/clip", response_model=ClipResponse)
 async def clip_article(request: ClipRequest):
     """剪藏文章 API"""
     try:
         # 1. 解析网页
-        title, html, cleaned_html = web_parser.parse_url(str(request.url))
+        title, html, cleaned_html, meta_info = web_parser.parse_url(str(request.url))
         
         # 2. 转换为 Markdown
         markdown, images = markdown_converter.convert(cleaned_html)
@@ -42,8 +75,11 @@ async def clip_article(request: ClipRequest):
             elif not images:
                 notifier.send_progress("图片处理", "文章中未发现图片")
         
+        # 添加 YAML front matter 和 Obsidian 标签
+        full_content = generate_yaml_front_matter(str(request.url), title, meta_info) + markdown
+        
         # 4. 保存到 CouchDB
-        doc_id = couchdb_service.save_document(title, markdown, str(request.url))
+        doc_id = couchdb_service.save_document(title, full_content, str(request.url))
         
         # 5. 发送成功通知
         notifier.send_success(title, str(request.url))
