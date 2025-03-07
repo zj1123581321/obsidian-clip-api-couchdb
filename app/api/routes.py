@@ -55,6 +55,16 @@ created: {created}
 async def clip_article(request: ClipRequest):
     """剪藏文章 API"""
     try:
+        # 发送剪藏开始通知
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        picgo_enabled = config.get('picgo', {}).get('enabled', False)
+        notifier.send_message(
+            f"📥 开始剪藏\n"
+            f"时间：{current_time}\n"
+            f"链接：{request.url}\n"
+            f"图床：{'已开启' if picgo_enabled else '未开启'}"
+        )
+        
         # 1. 解析网页
         title, html, cleaned_html, meta_info = web_parser.parse_url(str(request.url))
         
@@ -62,7 +72,6 @@ async def clip_article(request: ClipRequest):
         markdown, images = markdown_converter.convert(cleaned_html)
         
         # 3. 根据配置决定是否处理图片
-        picgo_enabled = config.get('picgo', {}).get('enabled', False)  # 默认不启用
         if picgo_enabled and images:
             notifier.send_progress("图片处理", "开始上传图片到图床")
             # 上传图片并替换 URL
@@ -80,8 +89,14 @@ async def clip_article(request: ClipRequest):
         # 4. 保存到 CouchDB
         doc_id = couchdb_service.save_document(title, full_content, str(request.url))
         
-        # 5. 发送成功通知
-        notifier.send_success(title, str(request.url))
+        # 5. 发送成功通知（合并中间和最后的通知）
+        doc_path = couchdb_service.get_document_path(doc_id)
+        notifier.send_message(
+            f"✅ 剪藏成功\n"
+            f"标题：{title}\n"
+            f"链接：{request.url}\n"
+            f"路径：{doc_path}"
+        )
         
         return ClipResponse(
             title=title,

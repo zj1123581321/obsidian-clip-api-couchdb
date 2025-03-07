@@ -95,7 +95,7 @@ class MarkdownConverter:
             # 检查 section 是否包含链接
             links = section.find_all('a')
             if links:
-                # 如果包含链接，保持原有结构，只添加换行
+                # 如果包含链接，保持原有结构，在 section 后添加两个换行符
                 section.append(soup.new_string('\n\n'))
             else:
                 # 如果不包含链接，提取文本内容
@@ -175,6 +175,9 @@ class MarkdownConverter:
             
             # 处理连续的空行，最多保留两个换行
             markdown = re.sub(r'\n{3,}', '\n\n', markdown)
+            
+            # 处理链接之间的换行，确保每个链接后有两个换行符
+            markdown = re.sub(r'(\[.*?\]\(.*?\))\n', r'\1\n\n', markdown)
             
             # 保存转换后的 Markdown
             self._save_debug_file("debug_result.md", markdown)

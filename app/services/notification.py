@@ -27,9 +27,15 @@ class NotificationService:
         else:
             raise Exception(f"获取企业微信访问令牌失败: {result}")
 
-    def _send_message(self, content: str, msg_type: str = "text"):
-        """发送企业微信消息"""
+    def send_message(self, content: str, msg_type: str = "text"):
+        """发送企业微信消息的公共方法
+        
+        Args:
+            content: 消息内容
+            msg_type: 消息类型，默认为 text
+        """
         if not self.corp_id or not self.agent_id or not self.corp_secret:
+            print(f"企业微信配置不完整，消息未发送: {content}")
             return
 
         try:
@@ -61,12 +67,12 @@ class NotificationService:
     def send_success(self, title: str, message: str):
         """发送成功信息（同时发送到企业微信）"""
         print(f"[成功] {title}: {message}")
-        self._send_message(f"✅ {title}\n{message}")
+        self.send_message(f"✅ {title}\n{message}")
 
     def send_error(self, message: str):
         """发送错误信息（同时发送到企业微信）"""
         print(f"[错误] {message}")
-        self._send_message(f"❌ 错误\n{message}")
+        self.send_message(f"❌ 错误\n{message}")
 
 # 创建全局通知服务实例
 notifier = NotificationService() 

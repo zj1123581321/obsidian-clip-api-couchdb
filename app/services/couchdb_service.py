@@ -91,5 +91,21 @@ class CouchDBService:
             notifier.send_error(error_msg)
             raise Exception(error_msg)
 
+    def get_document_path(self, doc_id: str) -> str:
+        """获取文档的保存路径
+        
+        Args:
+            doc_id: 文档ID
+            
+        Returns:
+            str: 文档的保存路径
+        """
+        try:
+            doc = self.db.get(doc_id)
+            return doc.get('path', '')
+        except Exception as e:
+            self._log(f"获取文档路径失败: {str(e)}")
+            return ''
+
 # 创建全局 CouchDB 服务实例
 couchdb_service = CouchDBService() 
