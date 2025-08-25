@@ -11,7 +11,19 @@ api:
   enabled: true  # 是否启用 API 鉴权
   key: "your-secret-api-key-here"  # API 密钥
 
-# CouchDB 配置
+# 存储方式配置
+storage:
+  method: "rest_api"  # 可选值: "couchdb", "rest_api"，默认 "rest_api"
+
+# Obsidian Local REST API 配置
+obsidian_api:
+  url: "http://127.0.0.1:27123"  # Obsidian Local REST API 地址
+  api_key: "your-obsidian-rest-api-key"  # Obsidian REST API 密钥
+  timeout: 30  # 请求超时时间（秒）
+  retry_count: 3  # 重试次数
+  retry_delay: 1  # 重试间隔（秒）
+
+# CouchDB 配置（向后兼容，建议迁移到 REST API）
 couchdb:
   url: "http://username:password@your-couchdb-host:5984/"  # 包含用户名和密码的 URL
   db_name: "your-db-name"  # 数据库名称
@@ -32,9 +44,10 @@ picgo:
   server: "http://your-picgo-server:36677"
   upload_path: "/upload?key=your-upload-key"
 
-# Obsidian 配置
+# Obsidian 文件配置
 obsidian:
   clippings_path: "Clippings"  # 剪藏文章在 Obsidian 中的保存路径
+  date_folder: true  # 是否按日期创建子文件夹: Clippings/2024/03/
 
 # 调试模式
 debug: false  # 生产环境建议关闭 

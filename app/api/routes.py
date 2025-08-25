@@ -7,6 +7,7 @@ from ..services.web_parser import web_parser
 from ..services.markdown_converter import markdown_converter
 from ..services.image_uploader import image_uploader
 from ..services.couchdb_service import couchdb_service
+from ..services.obsidian_rest_api import obsidian_rest_api
 from ..services.notification import notifier
 from ..config import config
 
@@ -98,10 +99,12 @@ async def clip_article(
         # 发送剪藏开始通知
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         picgo_enabled = config.get('picgo', {}).get('enabled', False)
+        storage_method = config.storage_method
         notifier.send_message(
             f"📥 开始剪藏\n"
             f"时间：{current_time}\n"
             f"链接：{request.url}\n"
+            f"存储：{storage_method.upper()}\n"
             f"图床：{'已开启' if picgo_enabled else '未开启'}"
         )
         
@@ -126,24 +129,96 @@ async def clip_article(
         # 添加 YAML front matter 和 Obsidian 标签
         full_content = generate_yaml_front_matter(str(request.url), title, meta_info) + markdown
         
-        # 4. 保存到 CouchDB
-        doc_id = couchdb_service.save_document(title, full_content, str(request.url))
+        # 4. 根据配置选择存储方式
+        storage_method = config.storage_method
         
-        # 5. 发送成功通知（合并中间和最后的通知）
-        doc_path = couchdb_service.get_document_path(doc_id)
-        notifier.send_message(
-            f"✅ 剪藏成功\n"
-            f"标题：{title}\n"
-            f"链接：{request.url}\n"
-            f"路径：{doc_path}"
-        )
-        
-        return ClipResponse(
-            title=title,
-            doc_id=doc_id
-        )
+        if storage_method == 'rest_api':
+            # 使用 Obsidian REST API
+            if not config.obsidian_api_key:
+                raise Exception("Obsidian REST API 密钥未配置，请检查 obsidian_api.api_key 配置项")
+            
+            # 添加向后兼容性提醒
+            if config.get('couchdb.url'):
+                notifier.send_progress("提醒", "检测到 CouchDB 配置，建议迁移到 REST API 方式")
+            
+            file_path = await obsidian_rest_api.save_document(title, full_content, str(request.url))
+            
+            notifier.send_message(
+                f"✅ 剪藏成功\n"
+                f"标题：{title}\n"
+                f"链接：{request.url}\n"
+                f"路径：{file_path}"
+            )
+            
+            return ClipResponse(
+                title=title,
+                doc_id=file_path  # REST API 返回文件路径作为 doc_id
+            )
+            
+        else:
+            # 使用 CouchDB（向后兼容）
+            if storage_method == 'couchdb':
+                notifier.send_progress("提醒", "⚠️ CouchDB 存储方式将在未来版本中废弃，建议切换到 REST API 方式")
+            
+            doc_id = couchdb_service.save_document(title, full_content, str(request.url))
+            doc_path = couchdb_service.get_document_path(doc_id)
+            
+            notifier.send_message(
+                f"✅ 剪藏成功\n"
+                f"标题：{title}\n"
+                f"链接：{request.url}\n"
+                f"路径：{doc_path}"
+            )
+            
+            return ClipResponse(
+                title=title,
+                doc_id=doc_id
+            )
         
     except Exception as e:
         error_msg = str(e)
         notifier.send_error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg) 
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.get("/health")
+async def health_check():
+    """健康检查接口，检查各个服务的状态"""
+    storage_method = config.storage_method
+    result = {
+        "storage_method": storage_method,
+        "status": "ok",
+        "services": {}
+    }
+    
+    try:
+        if storage_method == 'rest_api':
+            # 检查 Obsidian REST API
+            if config.obsidian_api_key:
+                connection_info = await obsidian_rest_api.test_connection()
+                result["services"]["obsidian_api"] = connection_info
+            else:
+                result["services"]["obsidian_api"] = {
+                    "status": "not_configured",
+                    "error": "API Key 未配置"
+                }
+        
+        # 检查图床服务（如果启用）
+        picgo_enabled = config.get('picgo', {}).get('enabled', False)
+        result["services"]["picgo"] = {
+            "enabled": picgo_enabled,
+            "status": "configured" if picgo_enabled else "disabled"
+        }
+        
+        # 检查企业微信（如果配置）
+        wechat_configured = bool(config.work_wechat_corp_id)
+        result["services"]["work_wechat"] = {
+            "configured": wechat_configured,
+            "status": "configured" if wechat_configured else "not_configured"
+        }
+        
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)
+    
+    return result 

@@ -71,4 +71,40 @@ class Config:
     def debug(self) -> bool:
         return self.get('debug', False)
 
+    # 新增：存储方式配置
+    @property
+    def storage_method(self) -> str:
+        """获取存储方式：couchdb 或 rest_api"""
+        return self.get('storage.method', 'rest_api')
+
+    # 新增：Obsidian REST API 配置
+    @property
+    def obsidian_api_url(self) -> str:
+        return self.get('obsidian_api.url', 'http://127.0.0.1:27123')
+
+    @property
+    def obsidian_api_key(self) -> str:
+        return self.get('obsidian_api.api_key')
+
+    @property
+    def obsidian_api_timeout(self) -> int:
+        return self.get('obsidian_api.timeout', 30)
+
+    @property
+    def obsidian_api_retry_count(self) -> int:
+        return self.get('obsidian_api.retry_count', 3)
+
+    @property
+    def obsidian_api_retry_delay(self) -> int:
+        return self.get('obsidian_api.retry_delay', 1)
+
+    # 新增：Obsidian 文件配置
+    @property
+    def obsidian_clippings_path(self) -> str:
+        return self.get('obsidian.clippings_path', 'Clippings')
+
+    @property
+    def obsidian_date_folder(self) -> bool:
+        return self.get('obsidian.date_folder', True)
+
 config = Config() 
