@@ -2,6 +2,7 @@ fastapi==0.109.2
 uvicorn==0.27.1
 python-multipart==0.0.9
 requests==2.31.0
+certifi>=2025.0.0
 beautifulsoup4==4.12.3
 markdownify==0.11.6
 PyYAML==6.0.1
