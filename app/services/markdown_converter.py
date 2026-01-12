@@ -24,16 +24,27 @@ class MarkdownConverter:
         pass
 
     def _extract_images(self, html: str) -> List[Tuple[str, str]]:
-        """提取 HTML 中的所有图片链接"""
+        """提取 HTML 中的所有图片链接
+
+        同时支持 src 和 data-src 属性（微信公众号使用 data-src 懒加载）。
+        优先使用 src 属性，如果没有则使用 data-src。
+
+        Args:
+            html: HTML 内容
+
+        Returns:
+            List[Tuple[str, str]]: 图片链接和 alt 文本的列表
+        """
         start_time = time.time()
         logger.debug("开始提取图片链接")
-        
+
         soup = BeautifulSoup(html, 'html.parser')
         images = []
-        
+
         # 查找所有图片标签
         for img in soup.find_all('img'):
-            src = img.get('src', '')
+            # 优先使用 src，如果没有则使用 data-src（微信懒加载）
+            src = img.get('src', '') or img.get('data-src', '')
             if src:
                 alt = img.get('alt', '')
                 images.append((src, alt))
@@ -82,13 +93,16 @@ class MarkdownConverter:
 
         # 处理 section 标签
         for section in soup.find_all('section'):
-            # 检查 section 是否包含链接
+            # 检查 section 是否包含链接或标题
             links = section.find_all('a')
-            if links:
-                # 如果包含链接，保持原有结构，在 section 后添加两个换行符
+            headings = section.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+            images = section.find_all('img')
+
+            if links or headings or images:
+                # 如果包含链接、标题或图片，保持原有结构
                 section.append(soup.new_string('\n\n'))
             else:
-                # 如果不包含链接，提取文本内容
+                # 如果不包含重要元素，提取文本内容
                 span = section.find('span')
                 if span:
                     text = span.get_text()
@@ -147,38 +161,47 @@ class MarkdownConverter:
     def _clean_wechat_content(self, html: str) -> str:
         """清理微信公众号文章的额外内容
 
+        采用降级策略：
+        1. 优先使用截断方式（保留完整 HTML 结构，图片和文本不会丢失）
+        2. 如果找不到截断点，再尝试从 JS 变量提取（适用于新类型微信链接）
+
         Args:
             html: 原始 HTML
 
         Returns:
             str: 清理后的 HTML 内容
         """
-        # 先尝试从 JS 变量中提取内容
+        # 方式1：优先使用截断逻辑（旧方式，兼容性好）
+        cut_point = html.find("预览时标签不可点")
+        if cut_point != -1:
+            logger.debug("[MarkdownConverter] 使用截断方式处理微信文章")
+            return html[:cut_point].strip()
+
+        # 方式2：降级到 JS 变量提取（适用于新类型链接）
         js_content = self._extract_wechat_js_content(html)
         if js_content:
-            # 将纯文本内容转换为简单的 HTML 结构
-            # 按段落分割并包装
+            logger.debug("[MarkdownConverter] 使用 JS 变量提取方式处理微信文章")
+            # 将提取的内容转换为 HTML 结构
             paragraphs = js_content.split('\n\n')
             html_paragraphs = []
             for p in paragraphs:
                 p = p.strip()
                 if p:
-                    # 保留已有的 HTML 标签（如链接）
+                    # 保留已有的 HTML 标签（如链接、图片）
                     if '<a ' in p or '<img ' in p:
                         html_paragraphs.append(f"<p>{p}</p>")
                     else:
                         # 处理单个换行
                         p = p.replace('\n', '<br/>')
                         html_paragraphs.append(f"<p>{p}</p>")
-            return '\n'.join(html_paragraphs)
+            result = '\n'.join(html_paragraphs)
+            # 将 data-src 替换为 src，确保 markdownify 能正确转换图片
+            result = re.sub(r'data-src="([^"]*)"', r'src="\1"', result)
+            return result
 
-        # 如果无法从 JS 提取，使用原来的截断逻辑
-        cut_point = html.find("预览时标签不可点")
-        if cut_point == -1:
-            return html
-
-        # 截取有效内容
-        return html[:cut_point].strip()
+        # 方式3：都不适用，返回原始 HTML
+        logger.debug("[MarkdownConverter] 无法识别微信文章格式，返回原始 HTML")
+        return html
 
     def convert(self, html: str) -> Tuple[str, List[Tuple[str, str]]]:
         """将 HTML 转换为 Markdown，并提取图片信息"""
