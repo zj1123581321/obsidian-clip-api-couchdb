@@ -120,13 +120,73 @@ class MarkdownConverter:
         
         return str(soup)
 
+    def _extract_wechat_js_content(self, html: str) -> str:
+        """从微信公众号 JavaScript 变量中提取文章内容
+
+        微信公众号文章内容存储在 JS 变量 content_noencode 中，
+        格式为: content_noencode: JsDecode('...')
+
+        Args:
+            html: 原始 HTML
+
+        Returns:
+            str: 提取的文章内容（HTML 格式），如果提取失败返回空字符串
+        """
+        # 匹配 content_noencode: JsDecode('...')
+        pattern = r"content_noencode:\s*JsDecode\('([^']+)'\)"
+        match = re.search(pattern, html)
+
+        if not match:
+            return ""
+
+        content = match.group(1)
+
+        # 解码转义字符
+        content = content.replace('\\x0a', '\n')
+        content = content.replace('\\x3c', '<')
+        content = content.replace('\\x3e', '>')
+        content = content.replace('\\x22', '"')
+        content = content.replace('\\x26amp;', '&')
+        content = content.replace('\\x27', "'")
+        content = content.replace('\\/', '/')
+        content = content.replace('\\\\', '\\')
+
+        self._log(f"从微信 JS 变量中提取到文章内容，长度: {len(content)}")
+        return content
+
     def _clean_wechat_content(self, html: str) -> str:
-        """清理微信公众号文章的额外内容"""
-        # 查找截断词的位置
+        """清理微信公众号文章的额外内容
+
+        Args:
+            html: 原始 HTML
+
+        Returns:
+            str: 清理后的 HTML 内容
+        """
+        # 先尝试从 JS 变量中提取内容
+        js_content = self._extract_wechat_js_content(html)
+        if js_content:
+            # 将纯文本内容转换为简单的 HTML 结构
+            # 按段落分割并包装
+            paragraphs = js_content.split('\n\n')
+            html_paragraphs = []
+            for p in paragraphs:
+                p = p.strip()
+                if p:
+                    # 保留已有的 HTML 标签（如链接）
+                    if '<a ' in p or '<img ' in p:
+                        html_paragraphs.append(f"<p>{p}</p>")
+                    else:
+                        # 处理单个换行
+                        p = p.replace('\n', '<br/>')
+                        html_paragraphs.append(f"<p>{p}</p>")
+            return '\n'.join(html_paragraphs)
+
+        # 如果无法从 JS 提取，使用原来的截断逻辑
         cut_point = html.find("预览时标签不可点")
         if cut_point == -1:
             return html
-            
+
         # 截取有效内容
         return html[:cut_point].strip()
 
