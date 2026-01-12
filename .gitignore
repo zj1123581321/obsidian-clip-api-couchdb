@@ -71,3 +71,4 @@ htmlcov/
 # 项目特定
 /debug
 tmpclaude-*
+docker/export/output

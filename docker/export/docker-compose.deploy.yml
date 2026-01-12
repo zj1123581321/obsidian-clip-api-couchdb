@@ -1,0 +1,15 @@
+services:
+  clip-api:
+    image: obsidian-clip-api:latest
+    container_name: obsidian-clip-api
+    restart: unless-stopped
+    ports:
+      - "8901:8901"
+    environment:
+      - TZ=Asia/Shanghai
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      # Configuration file (read-only)
+      - ./config.yaml:/app/config.yaml:ro
+      # Log persistence
+      - ./logs:/app/logs
