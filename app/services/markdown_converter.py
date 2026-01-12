@@ -173,13 +173,13 @@ class MarkdownConverter:
         # 方式1：优先使用截断逻辑（旧方式，兼容性好）
         cut_point = html.find("预览时标签不可点")
         if cut_point != -1:
-            logger.debug("[MarkdownConverter] 使用截断方式处理微信文章")
+            logger.info("[MarkdownConverter] 解析方式: 截断提取（保留完整HTML结构）")
             return html[:cut_point].strip()
 
         # 方式2：降级到 JS 变量提取（适用于新类型链接）
         js_content = self._extract_wechat_js_content(html)
         if js_content:
-            logger.debug("[MarkdownConverter] 使用 JS 变量提取方式处理微信文章")
+            logger.info("[MarkdownConverter] 解析方式: JS变量提取（降级模式）")
             # 将提取的内容转换为 HTML 结构
             paragraphs = js_content.split('\n\n')
             html_paragraphs = []
@@ -199,7 +199,7 @@ class MarkdownConverter:
             return result
 
         # 方式3：都不适用，返回原始 HTML
-        logger.debug("[MarkdownConverter] 无法识别微信文章格式，返回原始 HTML")
+        logger.info("[MarkdownConverter] 解析方式: 原始HTML（非微信文章或格式未识别）")
         return html
 
     def convert(self, html: str) -> Tuple[str, List[Tuple[str, str]]]:
