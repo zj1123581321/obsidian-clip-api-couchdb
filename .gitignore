@@ -43,10 +43,12 @@ ENV/
 
 # 调试文件
 debug/
-*.log
-logs/
-debug.log
 *.debug
+
+# 日志文件（保留 logs 目录结构）
+logs/*.log
+logs/*.log.*
+!logs/.gitkeep
 
 # 配置文件（根据需要取消注释）
 config.yaml

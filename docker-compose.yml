@@ -7,6 +7,7 @@ services:
       - "8901:8901"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
+      - ./logs:/app/logs
     environment:
       - CONFIG_PATH=/app/config.yaml
-    restart: unless-stopped 
+    restart: unless-stopped

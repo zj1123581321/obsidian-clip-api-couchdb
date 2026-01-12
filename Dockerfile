@@ -24,6 +24,9 @@ RUN uv pip install --system --no-cache -r pyproject.toml
 COPY app/ ./app/
 COPY README.md .
 
+# 创建日志目录
+RUN mkdir -p /app/logs
+
 # 设置环境变量
 ENV PYTHONPATH=/app
 ENV TZ=Asia/Shanghai
