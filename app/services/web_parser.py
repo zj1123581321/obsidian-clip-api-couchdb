@@ -7,35 +7,23 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-import os
 from ..services.notification import notifier
 from ..config import config
 from ..logger import logger
+from ..utils.debug_manager import debug_manager
+
 
 class WebParser:
+    """网页解析器
+
+    负责获取和解析网页内容，提取标题、正文和元数据。
+    """
+
     def __init__(self):
+        """初始化网页解析器"""
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        self.debug_dir = "debug"
-        self.debug_seq = 1  # 调试文件序号
-
-    def _save_debug_file(self, filename: str, content: str):
-        """保存调试文件"""
-        if config.debug:
-            try:
-                os.makedirs(self.debug_dir, exist_ok=True)
-                # 添加序号前缀
-                base, ext = os.path.splitext(filename)
-                filename = f"{self.debug_seq:02d}_{base}{ext}"
-                self.debug_seq += 1
-                
-                filepath = os.path.join(self.debug_dir, filename)
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                notifier.send_progress("调试信息", f"已保存调试文件: {filename}")
-            except Exception as e:
-                notifier.send_error(f"保存调试文件失败: {str(e)}")
 
     def _extract_title(self, soup: BeautifulSoup) -> str:
         """提取网页标题"""
@@ -138,9 +126,9 @@ class WebParser:
             html = response.text
             cleaned_html = self._clean_html(html)
             
-            # 保存原始 HTML
-            self._save_debug_file("web_original.html", html)
-            self._save_debug_file("web_cleaned.html", cleaned_html)
+            # 保存原始 HTML（调试用）
+            debug_manager.save_file("original.html", html, prefix="web")
+            debug_manager.save_file("cleaned.html", cleaned_html, prefix="web")
             
             # 提取标题和元数据
             title = self._extract_title(BeautifulSoup(cleaned_html, 'html.parser'))

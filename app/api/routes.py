@@ -11,6 +11,7 @@ from ..services.obsidian_rest_api import obsidian_rest_api
 from ..services.notification import notifier
 from ..services.llm_service import llm_service, LLMResult
 from ..config import config
+from ..utils.debug_manager import debug_manager
 
 router = APIRouter()
 
@@ -155,6 +156,9 @@ async def clip_article(
         ClipResponse: 剪藏结果
     """
     try:
+        # 开始新的调试会话（按时间戳创建子文件夹）
+        debug_manager.start_session()
+
         # 发送剪藏开始通知
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         picgo_enabled = config.get('picgo', {}).get('enabled', False)
@@ -283,6 +287,9 @@ async def clip_article(
         error_msg = str(e)
         notifier.send_error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
+    finally:
+        # 结束调试会话
+        debug_manager.end_session()
 
 
 @router.get("/health")

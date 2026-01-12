@@ -1,3 +1,9 @@
+"""
+图片上传服务模块
+
+负责下载图片并上传到 PicGo 图床。
+"""
+
 import aiohttp
 import asyncio
 from typing import List, Tuple, Dict
@@ -9,49 +15,17 @@ from urllib.parse import urljoin, urlparse
 from ..config import config
 from ..services.notification import notifier
 from ..logger import logger
+from ..utils.debug_manager import debug_manager
 import re
+
 
 class ImageUploader:
     """图片上传服务，负责下载图片并上传到 PicGo 图床"""
 
     def __init__(self):
+        """初始化图片上传器"""
         self.picgo_server = config.picgo_server
         self.upload_path = config.picgo_upload_path
-        self.debug_dir = "debug"
-        self.debug_seq = 1  # 调试文件序号
-
-    def _save_debug_file(self, filename: str, content: str):
-        """保存调试文件"""
-        if config.debug:
-            try:
-                os.makedirs(self.debug_dir, exist_ok=True)
-                # 添加序号前缀
-                base, ext = os.path.splitext(filename)
-                filename = f"{self.debug_seq:02d}_{base}{ext}"
-                self.debug_seq += 1
-                
-                filepath = os.path.join(self.debug_dir, filename)
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                logger.debug(f"已保存调试文件: {filename}")
-            except Exception as e:
-                logger.debug(f"保存调试文件失败: {str(e)}")
-
-    def _save_debug_image(self, image_data: bytes, index: int, prefix: str = ""):
-        """保存调试图片"""
-        if config.debug:
-            try:
-                os.makedirs(self.debug_dir, exist_ok=True)
-                # 添加序号前缀
-                filename = f"{self.debug_seq:02d}_image_{prefix}{index}"
-                self.debug_seq += 1
-                
-                filepath = os.path.join(self.debug_dir, filename)
-                with open(filepath, 'wb') as f:
-                    f.write(image_data)
-                logger.debug(f"已保存调试图片: {filename}")
-            except Exception as e:
-                logger.debug(f"保存调试图片失败: {str(e)}")
 
     async def _download_image(self, session: aiohttp.ClientSession, image_url: str) -> bytes:
         """下载图片"""
@@ -146,12 +120,7 @@ class ImageUploader:
             image_data = await self._download_image(session, image_url)
 
             # 保存调试文件
-            if config.debug:
-                debug_path = os.path.join(self.debug_dir, f"debug_image_{filename}")
-                os.makedirs(self.debug_dir, exist_ok=True)
-                with open(debug_path, 'wb') as f:
-                    f.write(image_data)
-                logger.debug(f"已保存调试图片: {debug_path}")
+            debug_manager.save_binary_file(f"image_{filename}", image_data, prefix="img")
 
             # 上传到图床
             new_url = await self._upload_to_picgo(session, image_data, filename)
@@ -210,9 +179,10 @@ class ImageUploader:
                 url_mapping = {old_url: new_url for old_url, new_url in results}
                 
                 # 保存 URL 映射到调试文件
-                self._save_debug_file(
+                debug_manager.save_file(
                     "url_mapping.json",
-                    json.dumps(url_mapping, ensure_ascii=False, indent=2)
+                    json.dumps(url_mapping, ensure_ascii=False, indent=2),
+                    prefix="img"
                 )
                 
                 # 打印处理结果
@@ -228,11 +198,15 @@ class ImageUploader:
         start_time = time.time()  # 使用局部变量
         logger.debug("开始替换图片 URL")
         
-        # 保存替换前的 Markdown
-        self._save_debug_file("before_replace.md", markdown)
-        
-        # 保存 URL 映射关系
-        self._save_debug_file("url_mapping.json", json.dumps(url_mapping, indent=2, ensure_ascii=False))
+        # 保存替换前的 Markdown（调试用）
+        debug_manager.save_file("before_replace.md", markdown, prefix="img")
+
+        # 保存 URL 映射关系（调试用）
+        debug_manager.save_file(
+            "replace_mapping.json",
+            json.dumps(url_mapping, indent=2, ensure_ascii=False),
+            prefix="img"
+        )
         
         # 替换每个图片 URL
         for old_url, new_url in url_mapping.items():
@@ -246,8 +220,8 @@ class ImageUploader:
             # 替换直接的 URL
             markdown = markdown.replace(old_url, new_url)
         
-        # 保存最终的 Markdown
-        self._save_debug_file("final.md", markdown)
+        # 保存最终的 Markdown（调试用）
+        debug_manager.save_file("final.md", markdown, prefix="img")
         
         elapsed = time.time() - start_time  # 使用局部变量计算耗时
         logger.debug(f"URL 替换完成，耗时: {elapsed:.2f}秒")

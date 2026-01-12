@@ -1,37 +1,27 @@
+"""
+Markdown 转换服务模块
+
+负责将 HTML 转换为 Markdown 格式。
+"""
+
 import trafilatura
 from bs4 import BeautifulSoup
 import re
-import os
 import time
 from typing import List, Tuple
 from markdownify import markdownify as md
 from ..services.notification import notifier
 from ..config import config
 from ..logger import logger
+from ..utils.debug_manager import debug_manager
+
 
 class MarkdownConverter:
     """Markdown 转换服务，负责将 HTML 转换为 Markdown"""
 
     def __init__(self):
-        self.debug_dir = "debug"
-        self.debug_seq = 1  # 调试文件序号
-
-    def _save_debug_file(self, filename: str, content: str):
-        """保存调试文件"""
-        if config.debug:
-            try:
-                os.makedirs(self.debug_dir, exist_ok=True)
-                # 添加序号前缀
-                base, ext = os.path.splitext(filename)
-                filename = f"{self.debug_seq:02d}_{base}{ext}"
-                self.debug_seq += 1
-                
-                filepath = os.path.join(self.debug_dir, filename)
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                logger.debug(f"已保存调试文件: {filename}")
-            except Exception as e:
-                logger.debug(f"保存调试文件失败: {str(e)}")
+        """初始化 Markdown 转换器"""
+        pass
 
     def _extract_images(self, html: str) -> List[Tuple[str, str]]:
         """提取 HTML 中的所有图片链接"""
@@ -50,10 +40,13 @@ class MarkdownConverter:
                 # 在原始 HTML 中标记已处理的图片
                 img['data-processed'] = 'true'
         
-        # 保存图片链接列表
+        # 保存图片链接列表（调试用）
         if images:
-            self._save_debug_file("debug_images.txt", 
-                                "\n".join([f"{src}\t{alt}" for src, alt in images]))
+            debug_manager.save_file(
+                "images.txt",
+                "\n".join([f"{src}\t{alt}" for src, alt in images]),
+                prefix="md"
+            )
         
         elapsed = time.time() - start_time
         logger.debug(f"图片链接提取完成，找到 {len(images)} 张图片，耗时: {elapsed:.2f}秒")
@@ -193,8 +186,8 @@ class MarkdownConverter:
             start_time = time.time()
             logger.info("[MarkdownConverter] 开始转换 HTML 到 Markdown")
             
-            # 保存原始 HTML
-            self._save_debug_file("debug_original.html", html)
+            # 保存原始 HTML（调试用）
+            debug_manager.save_file("original.html", html, prefix="md")
             
             # 清理微信公众号文章的额外内容
             html = self._clean_wechat_content(html)
@@ -205,8 +198,8 @@ class MarkdownConverter:
             # 清理 HTML
             html = self._clean_html(html)
             
-            # 保存处理后的 HTML
-            self._save_debug_file("debug_processed.html", html)
+            # 保存处理后的 HTML（调试用）
+            debug_manager.save_file("processed.html", html, prefix="md")
             
             # 使用 markdownify 转换为 Markdown
             markdown = md(html,
@@ -236,8 +229,8 @@ class MarkdownConverter:
             # 处理链接之间的换行，确保每个链接后有两个换行符
             markdown = re.sub(r'(\[.*?\]\(.*?\))\n', r'\1\n\n', markdown)
             
-            # 保存转换后的 Markdown
-            self._save_debug_file("debug_result.md", markdown)
+            # 保存转换后的 Markdown（调试用）
+            debug_manager.save_file("result.md", markdown, prefix="md")
             
             elapsed = time.time() - start_time
             logger.info(f"[MarkdownConverter] 转换完成: images={len(images)}, time={elapsed:.2f}s")
