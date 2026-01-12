@@ -3,21 +3,18 @@ from bs4 import BeautifulSoup
 import re
 import os
 import time
-from datetime import datetime
 from typing import List, Tuple
 from markdownify import markdownify as md
 from ..services.notification import notifier
 from ..config import config
+from ..logger import logger
 
 class MarkdownConverter:
+    """Markdown 转换服务，负责将 HTML 转换为 Markdown"""
+
     def __init__(self):
         self.debug_dir = "debug"
         self.debug_seq = 1  # 调试文件序号
-
-    def _log(self, message: str):
-        """输出带时间戳的日志"""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        print(f"[{timestamp}] {message}")
 
     def _save_debug_file(self, filename: str, content: str):
         """保存调试文件"""
@@ -32,14 +29,14 @@ class MarkdownConverter:
                 filepath = os.path.join(self.debug_dir, filename)
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(content)
-                self._log(f"已保存调试文件: {filename}")
+                logger.debug(f"已保存调试文件: {filename}")
             except Exception as e:
-                self._log(f"保存调试文件失败: {str(e)}")
+                logger.debug(f"保存调试文件失败: {str(e)}")
 
     def _extract_images(self, html: str) -> List[Tuple[str, str]]:
         """提取 HTML 中的所有图片链接"""
         start_time = time.time()
-        self._log("开始提取图片链接")
+        logger.debug("开始提取图片链接")
         
         soup = BeautifulSoup(html, 'html.parser')
         images = []
@@ -59,7 +56,7 @@ class MarkdownConverter:
                                 "\n".join([f"{src}\t{alt}" for src, alt in images]))
         
         elapsed = time.time() - start_time
-        self._log(f"图片链接提取完成，找到 {len(images)} 张图片，耗时: {elapsed:.2f}秒")
+        logger.debug(f"图片链接提取完成，找到 {len(images)} 张图片，耗时: {elapsed:.2f}秒")
         return images
 
     def _clean_html(self, html: str) -> str:
@@ -151,7 +148,7 @@ class MarkdownConverter:
         content = content.replace('\\/', '/')
         content = content.replace('\\\\', '\\')
 
-        self._log(f"从微信 JS 变量中提取到文章内容，长度: {len(content)}")
+        logger.debug(f"从微信 JS 变量中提取到文章内容，长度: {len(content)}")
         return content
 
     def _clean_wechat_content(self, html: str) -> str:
@@ -194,7 +191,7 @@ class MarkdownConverter:
         """将 HTML 转换为 Markdown，并提取图片信息"""
         try:
             start_time = time.time()
-            self._log("开始转换 HTML 到 Markdown")
+            logger.info("[MarkdownConverter] 开始转换 HTML 到 Markdown")
             
             # 保存原始 HTML
             self._save_debug_file("debug_original.html", html)
@@ -243,13 +240,13 @@ class MarkdownConverter:
             self._save_debug_file("debug_result.md", markdown)
             
             elapsed = time.time() - start_time
-            self._log(f"Markdown 转换完成，耗时: {elapsed:.2f}秒")
+            logger.info(f"[MarkdownConverter] 转换完成: images={len(images)}, time={elapsed:.2f}s")
             
             return markdown, images
             
         except Exception as e:
             error_msg = f"转换 Markdown 失败: {str(e)}"
-            self._log(error_msg)
+            logger.error(f"[MarkdownConverter] {error_msg}")
             raise Exception(error_msg)
 
 # 创建全局转换器实例

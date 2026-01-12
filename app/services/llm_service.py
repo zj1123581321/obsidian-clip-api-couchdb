@@ -7,13 +7,12 @@
 
 import aiohttp
 import asyncio
-import json
 import time
-from datetime import datetime
 from typing import Optional, List, Dict, Any
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from ..config import config
 from ..services.notification import notifier
+from ..logger import logger
 
 
 @dataclass
@@ -101,22 +100,6 @@ class LLMService:
         self.retry_delay = config.get('llm.retry_delay', 2)
         self.language = config.get('llm.language', 'auto')
 
-    def _log(self, message: str):
-        """输出带时间戳的日志
-
-        Args:
-            message: 日志消息
-        """
-        import sys
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        log_message = f"[{timestamp}] [LLM] {message}"
-        try:
-            print(log_message)
-        except UnicodeEncodeError:
-            # Windows 控制台编码兼容：将无法编码的字符替换为 ?
-            safe_message = log_message.encode(sys.stdout.encoding or 'utf-8', errors='replace').decode(sys.stdout.encoding or 'utf-8', errors='replace')
-            print(safe_message)
-
     def is_enabled(self) -> bool:
         """检查 LLM 服务是否启用
 
@@ -139,13 +122,11 @@ class LLMService:
         self._reload_config()
 
         if not self.is_enabled():
-            self._log("LLM 服务未启用或未配置 URL")
+            logger.warning("[LLM] 服务未启用或未配置 URL")
             return None
 
         start_time = time.time()
-        # 安全处理标题显示，避免 Windows 控制台编码问题
-        safe_title = title[:50].encode('ascii', errors='replace').decode('ascii')
-        self._log(f"开始处理文章: {safe_title}...")
+        logger.info(f"[LLM] 开始处理文章: {title[:50]}...")
 
         # 构建请求数据
         request_data = {
@@ -160,25 +141,25 @@ class LLMService:
             try:
                 result = await self._call_api(request_data)
                 elapsed = time.time() - start_time
-                self._log(f"LLM 处理完成，总耗时: {elapsed:.2f}秒")
+                logger.info(f"[LLM] 处理完成: category='{result.category}', score={result.scoring.total_score}, time={elapsed:.2f}s")
                 return result
 
             except asyncio.TimeoutError:
                 last_error = f"请求超时（{self.timeout}秒）"
-                self._log(f"请求超时，第 {attempt + 1} 次尝试失败")
+                logger.warning(f"[LLM] 请求超时，第 {attempt + 1} 次尝试失败")
 
             except Exception as e:
                 last_error = str(e)
-                self._log(f"请求失败: {last_error}，第 {attempt + 1} 次尝试失败")
+                logger.warning(f"[LLM] 请求失败: {last_error}，第 {attempt + 1} 次尝试失败")
 
             # 如果不是最后一次尝试，等待后重试
             if attempt < self.retry_count:
                 wait_time = self.retry_delay * (2 ** attempt)
-                self._log(f"等待 {wait_time} 秒后重试...")
+                logger.info(f"[LLM] 等待 {wait_time} 秒后重试...")
                 await asyncio.sleep(wait_time)
 
         # 所有重试都失败
-        self._log(f"LLM 处理失败，已重试 {self.retry_count} 次: {last_error}")
+        logger.error(f"[LLM] 处理失败，已重试 {self.retry_count} 次: {last_error}")
         notifier.send_progress("LLM 处理", f"⚠️ 处理失败: {last_error}")
         return None
 
@@ -205,7 +186,7 @@ class LLMService:
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
 
-        self._log(f"调用 API: {self.api_url}")
+        logger.debug(f"[LLM] 调用 API: {self.api_url}")
 
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
@@ -218,7 +199,7 @@ class LLMService:
                     raise Exception(f"API 返回错误状态码 {response.status}: {error_text[:200]}")
 
                 result_data = await response.json()
-                self._log(f"API 响应成功: success={result_data.get('success')}")
+                logger.debug(f"[LLM] API 响应成功: success={result_data.get('success')}")
 
                 return self._parse_response(result_data)
 

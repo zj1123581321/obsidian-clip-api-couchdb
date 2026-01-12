@@ -1,3 +1,9 @@
+"""
+Obsidian REST API 服务模块
+
+负责通过 Obsidian Local REST API 保存文档到 Obsidian。
+"""
+
 import aiohttp
 import asyncio
 import re
@@ -5,6 +11,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 from ..config import config
 from ..services.notification import notifier
+from ..logger import logger
 
 
 class ObsidianRestAPIService:

@@ -83,16 +83,26 @@ docker-compose up -d
 
 #### 本地运行
 
-1. 安装依赖：
+1. 安装 uv（如果尚未安装）：
 ```bash
-pip install -r requirements.txt
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-2. 配置 `config.yaml`（同上）
-
-3. 运行服务：
+2. 创建虚拟环境并安装依赖：
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8901
+uv venv
+uv pip install -e .
+```
+
+3. 配置 `config.yaml`（同上）
+
+4. 运行服务：
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8901
 ```
 
 ## API 使用

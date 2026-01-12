@@ -21,12 +21,16 @@ wheels/
 *.egg
 CLAUDE.md
 
+# uv
+.python-version
+uv.lock
+
 # 虚拟环境
 venv/
+.venv/
 env/
 ENV/
 .env
-.venv
 
 # IDE
 .idea/
@@ -64,3 +68,4 @@ htmlcov/
 
 # 项目特定
 /debug
+tmpclaude-*

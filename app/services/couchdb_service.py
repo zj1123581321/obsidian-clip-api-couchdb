@@ -1,10 +1,16 @@
+"""
+CouchDB 存储服务模块
+
+负责将剪藏的文章保存到 CouchDB 数据库。
+"""
+
 import couchdb
 import time
 from datetime import datetime
-import os
 from typing import Optional, Tuple
 from ..config import config
 from ..services.notification import notifier
+from ..logger import logger
 
 class CouchDBService:
     def __init__(self):
@@ -104,7 +110,7 @@ class CouchDBService:
             doc = self.db.get(doc_id)
             return doc.get('path', '')
         except Exception as e:
-            self._log(f"获取文档路径失败: {str(e)}")
+            logger.error(f"[CouchDB] 获取文档路径失败: {str(e)}")
             return ''
 
 # 创建全局 CouchDB 服务实例

@@ -5,23 +5,20 @@ import os
 import json
 import tempfile
 import time
-from datetime import datetime
 from urllib.parse import urljoin, urlparse
 from ..config import config
 from ..services.notification import notifier
+from ..logger import logger
 import re
 
 class ImageUploader:
+    """图片上传服务，负责下载图片并上传到 PicGo 图床"""
+
     def __init__(self):
         self.picgo_server = config.picgo_server
         self.upload_path = config.picgo_upload_path
         self.debug_dir = "debug"
         self.debug_seq = 1  # 调试文件序号
-
-    def _log(self, message: str):
-        """输出带时间戳的日志"""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        print(f"[{timestamp}] {message}")
 
     def _save_debug_file(self, filename: str, content: str):
         """保存调试文件"""
@@ -36,9 +33,9 @@ class ImageUploader:
                 filepath = os.path.join(self.debug_dir, filename)
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(content)
-                self._log(f"已保存调试文件: {filename}")
+                logger.debug(f"已保存调试文件: {filename}")
             except Exception as e:
-                self._log(f"保存调试文件失败: {str(e)}")
+                logger.debug(f"保存调试文件失败: {str(e)}")
 
     def _save_debug_image(self, image_data: bytes, index: int, prefix: str = ""):
         """保存调试图片"""
@@ -52,14 +49,14 @@ class ImageUploader:
                 filepath = os.path.join(self.debug_dir, filename)
                 with open(filepath, 'wb') as f:
                     f.write(image_data)
-                self._log(f"已保存调试图片: {filename}")
+                logger.debug(f"已保存调试图片: {filename}")
             except Exception as e:
-                self._log(f"保存调试图片失败: {str(e)}")
+                logger.debug(f"保存调试图片失败: {str(e)}")
 
     async def _download_image(self, session: aiohttp.ClientSession, image_url: str) -> bytes:
         """下载图片"""
         start_time = time.time()
-        self._log(f"开始下载图片: {image_url}")
+        logger.debug(f"开始下载图片: {image_url}")
         try:
             async with session.get(image_url) as response:
                 if response.status != 200:
@@ -71,17 +68,17 @@ class ImageUploader:
                 
                 image_data = await response.read()
                 elapsed = time.time() - start_time
-                self._log(f"图片下载成功: {len(image_data)} 字节，耗时: {elapsed:.2f}秒")
+                logger.debug(f"图片下载成功: {len(image_data)} 字节，耗时: {elapsed:.2f}秒")
                 return image_data
         except Exception as e:
-            self._log(f"下载图片失败: {str(e)}")
+            logger.debug(f"下载图片失败: {str(e)}")
             raise
 
     async def _upload_to_picgo(self, session: aiohttp.ClientSession, 
                              image_data: bytes, filename: str) -> str:
         """上传图片到 PicGo"""
         start_time = time.time()
-        self._log(f"开始上传图片到 PicGo: {filename}")
+        logger.debug(f"开始上传图片到 PicGo: {filename}")
         
         max_retries = 3  # 最大重试次数
         retry_count = 0
@@ -97,7 +94,7 @@ class ImageUploader:
 
                 # 构建完整的上传 URL
                 upload_url = urljoin(self.picgo_server, self.upload_path)
-                self._log(f"上传 URL: {upload_url}")
+                logger.debug(f"上传 URL: {upload_url}")
 
                 # 发送上传请求，添加超时
                 timeout = aiohttp.ClientTimeout(total=30)  # 30秒超时
@@ -106,7 +103,7 @@ class ImageUploader:
                         raise Exception(f"上传失败，状态码: {response.status}")
                     
                     result = await response.json()
-                    self._log(f"PicGo 响应: {json.dumps(result, ensure_ascii=False)}")
+                    logger.debug(f"PicGo 响应: {json.dumps(result, ensure_ascii=False)}")
 
                     if not result.get('success'):
                         raise Exception(f"上传失败: {result.get('msg')}")
@@ -116,13 +113,13 @@ class ImageUploader:
                     
                     new_url = result['result'][0]
                     elapsed = time.time() - start_time
-                    self._log(f"图片上传成功: {new_url}，耗时: {elapsed:.2f}秒")
+                    logger.debug(f"图片上传成功: {new_url}，耗时: {elapsed:.2f}秒")
                     return new_url
 
             except asyncio.TimeoutError:
                 retry_count += 1
                 if retry_count < max_retries:
-                    self._log(f"上传超时，正在进行第 {retry_count} 次重试...")
+                    logger.debug(f"上传超时，正在进行第 {retry_count} 次重试...")
                     await asyncio.sleep(2)  # 等待2秒后重试
                 else:
                     raise Exception("上传多次超时，放弃重试")
@@ -130,7 +127,7 @@ class ImageUploader:
             except Exception as e:
                 retry_count += 1
                 if retry_count < max_retries:
-                    self._log(f"上传失败: {str(e)}，正在进行第 {retry_count} 次重试...")
+                    logger.debug(f"上传失败: {str(e)}，正在进行第 {retry_count} 次重试...")
                     await asyncio.sleep(2)  # 等待2秒后重试
                 else:
                     raise Exception(f"上传失败并超过最大重试次数: {str(e)}")
@@ -154,16 +151,16 @@ class ImageUploader:
                 os.makedirs(self.debug_dir, exist_ok=True)
                 with open(debug_path, 'wb') as f:
                     f.write(image_data)
-                self._log(f"已保存调试图片: {debug_path}")
+                logger.debug(f"已保存调试图片: {debug_path}")
 
             # 上传到图床
             new_url = await self._upload_to_picgo(session, image_data, filename)
             elapsed = time.time() - start_time
-            self._log(f"单张图片处理完成，总耗时: {elapsed:.2f}秒")
+            logger.debug(f"单张图片处理完成，总耗时: {elapsed:.2f}秒")
             return image_url, new_url
 
         except Exception as e:
-            self._log(f"处理图片失败: {str(e)}")
+            logger.debug(f"处理图片失败: {str(e)}")
             return image_url, image_url
 
     async def upload_images(self, images: List[Tuple[str, str]]) -> Dict[str, str]:
@@ -172,11 +169,11 @@ class ImageUploader:
             return {}
 
         start_time = time.time()
-        self._log(f"开始处理 {len(images)} 张图片")
+        logger.info(f"[ImageUploader] 开始处理 {len(images)} 张图片")
         
         # 创建临时目录用于存储下载的图片
         with tempfile.TemporaryDirectory() as temp_dir:
-            self._log(f"创建临时目录: {temp_dir}")
+            logger.debug(f"创建临时目录: {temp_dir}")
             
             # 设置并发限制和超时
             semaphore = asyncio.Semaphore(2)  # 限制为最多同时处理 2 张图片
@@ -188,7 +185,7 @@ class ImageUploader:
                         try:
                             return await self._process_single_image(session, image_url, alt)
                         except Exception as e:
-                            self._log(f"处理图片失败: {str(e)}")
+                            logger.debug(f"处理图片失败: {str(e)}")
                             return image_url, image_url  # 失败时返回原始URL
                 
                 # 创建所有任务
@@ -201,7 +198,7 @@ class ImageUploader:
                     # 等待所有任务完成，设置总超时
                     results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=120)
                 except asyncio.TimeoutError:
-                    self._log("图片处理总时间超过120秒，终止处理")
+                    logger.debug("图片处理总时间超过120秒，终止处理")
                     # 取消所有未完成的任务
                     for task in tasks:
                         if not task.done():
@@ -220,17 +217,16 @@ class ImageUploader:
                 
                 # 打印处理结果
                 elapsed = time.time() - start_time
-                self._log(f"\n图片处理完成，共 {len(url_mapping)} 张图片，总耗时: {elapsed:.2f}秒")
-                self._log("\nURL 映射关系:")
+                logger.info(f"[ImageUploader] 处理完成: count={len(url_mapping)}, time={elapsed:.2f}s")
                 for old_url, new_url in url_mapping.items():
-                    self._log(f"{old_url} -> {new_url}")
+                    logger.debug(f"[ImageUploader] URL映射: {old_url} -> {new_url}")
                 
                 return url_mapping
 
     def replace_image_urls(self, markdown: str, url_mapping: Dict[str, str]) -> str:
         """替换 Markdown 中的图片 URL"""
         start_time = time.time()  # 使用局部变量
-        self._log("开始替换图片 URL")
+        logger.debug("开始替换图片 URL")
         
         # 保存替换前的 Markdown
         self._save_debug_file("before_replace.md", markdown)
@@ -240,7 +236,7 @@ class ImageUploader:
         
         # 替换每个图片 URL
         for old_url, new_url in url_mapping.items():
-            self._log(f"替换图片 URL: {old_url} -> {new_url}")
+            logger.debug(f"替换图片 URL: {old_url} -> {new_url}")
             # 使用正则表达式替换图片 URL
             old_url_escaped = re.escape(old_url)
             # 替换带 alt 文本的图片
@@ -254,7 +250,7 @@ class ImageUploader:
         self._save_debug_file("final.md", markdown)
         
         elapsed = time.time() - start_time  # 使用局部变量计算耗时
-        self._log(f"URL 替换完成，耗时: {elapsed:.2f}秒")
+        logger.debug(f"URL 替换完成，耗时: {elapsed:.2f}秒")
         
         return markdown
 

@@ -1,10 +1,16 @@
+"""
+网页解析服务模块
+
+负责获取和解析网页内容。
+"""
+
 import requests
 from bs4 import BeautifulSoup
-from typing import Tuple, Optional
 import re
 import os
 from ..services.notification import notifier
 from ..config import config
+from ..logger import logger
 
 class WebParser:
     def __init__(self):
