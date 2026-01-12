@@ -49,7 +49,7 @@ llm:
   enabled: true  # 是否启用 LLM 处理，默认开启
   url: "http://127.0.0.1:8080/api/v1/process"  # LLM API 完整地址
   api_key: "your-llm-api-key"  # X-API-Key 鉴权
-  timeout: 180  # 超时时间（秒），默认 180
+  timeout: 300  # 超时时间（秒），默认 300
   retry_count: 2  # 重试次数
   retry_delay: 2  # 重试延迟（秒）
   language: "auto"  # 语言参数

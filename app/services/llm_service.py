@@ -96,7 +96,7 @@ class LLMService:
         self.enabled = config.get('llm.enabled', True)
         self.api_url = config.get('llm.url', '')
         self.api_key = config.get('llm.api_key', '')
-        self.timeout = config.get('llm.timeout', 180)
+        self.timeout = config.get('llm.timeout', 300)
         self.retry_count = config.get('llm.retry_count', 2)
         self.retry_delay = config.get('llm.retry_delay', 2)
         self.language = config.get('llm.language', 'auto')

@@ -173,32 +173,62 @@ async def clip_article(
         # 2. 转换为 Markdown
         markdown, images = markdown_converter.convert(cleaned_html)
         
-        # 3. 根据配置决定是否处理图片
+        # 3. 并行处理：图片上传 + LLM 处理
+        # 创建并行任务
+        tasks = []
+        task_names = []
+
+        # 图片上传任务
         if picgo_enabled and images:
             notifier.send_progress("图片处理", "开始上传图片到图床")
-            # 上传图片并替换 URL
-            url_mapping = await image_uploader.upload_images(images)
-            markdown = image_uploader.replace_image_urls(markdown, url_mapping)
+            tasks.append(image_uploader.upload_images(images))
+            task_names.append("image_upload")
         else:
             if not picgo_enabled:
                 notifier.send_progress("图片处理", "图床功能未启用，保持原始图片链接")
             elif not images:
                 notifier.send_progress("图片处理", "文章中未发现图片")
 
-        # 4. LLM 处理（可选）
-        llm_result = None
-        if llm_service.is_enabled():
+        # LLM 处理任务
+        llm_enabled = llm_service.is_enabled()
+        if llm_enabled:
             notifier.send_progress("LLM 处理", "开始调用外部 LLM API")
-            llm_result = await llm_service.process(title, markdown)
-            if llm_result and llm_result.success:
-                notifier.send_progress(
-                    "LLM 处理",
-                    f"[OK] 处理成功，分类: {llm_result.category}，耗时: {llm_result.processing_time:.1f}秒"
-                )
-            else:
-                notifier.send_progress("LLM 处理", "[WARN] 处理失败或未启用，继续保存文章")
+            tasks.append(llm_service.process(title, markdown))
+            task_names.append("llm_process")
         else:
             notifier.send_progress("LLM 处理", "功能未启用")
+
+        # 并行执行所有任务
+        url_mapping = {}
+        llm_result = None
+
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # 处理结果
+            for i, result in enumerate(results):
+                task_name = task_names[i]
+
+                if isinstance(result, Exception):
+                    notifier.send_progress(task_name, f"[ERROR] 执行失败: {str(result)}")
+                    continue
+
+                if task_name == "image_upload":
+                    url_mapping = result
+                    notifier.send_progress("图片处理", f"[OK] 上传完成，处理 {len(url_mapping)} 张图片")
+                elif task_name == "llm_process":
+                    llm_result = result
+                    if llm_result and llm_result.success:
+                        notifier.send_progress(
+                            "LLM 处理",
+                            f"[OK] 处理成功，分类: {llm_result.category}，耗时: {llm_result.processing_time:.1f}秒"
+                        )
+                    else:
+                        notifier.send_progress("LLM 处理", "[WARN] 处理失败，继续保存文章")
+
+        # 替换图片 URL（如果有上传）
+        if url_mapping:
+            markdown = image_uploader.replace_image_urls(markdown, url_mapping)
 
         # 添加 YAML front matter 和 Obsidian 标签
         full_content = generate_yaml_front_matter(str(request.url), title, meta_info, llm_result) + markdown

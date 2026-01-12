@@ -125,8 +125,8 @@ class Config:
 
     @property
     def llm_timeout(self) -> int:
-        """LLM API 超时时间（秒），默认 180"""
-        return self.get('llm.timeout', 180)
+        """LLM API 超时时间（秒），默认 300"""
+        return self.get('llm.timeout', 300)
 
     @property
     def llm_retry_count(self) -> int:
