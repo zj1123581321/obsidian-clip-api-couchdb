@@ -22,7 +22,7 @@ Obsidian 剪藏 API 是一个用于剪藏网页内容到 Obsidian 笔记软件�
 本项目采用现代化的 Python 技术栈：
 
 - **Web 框架**: FastAPI - 高性能异步 Web 框架
-- **内容解析**: BeautifulSoup4 + trafilatura - 智能网页内容提取
+- **内容解析**: BeautifulSoup4 + markdownify - 智能网页内容提取与转换
 - **数据存储**: CouchDB - 分布式文档数据库
 - **图片上传**: PicGo Server 集成 - 支持多种图床服务
 - **通知服务**: 企业微信 API - 实时状态推送

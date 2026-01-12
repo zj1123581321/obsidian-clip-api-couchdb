@@ -4,7 +4,6 @@ Markdown 转换服务模块
 负责将 HTML 转换为 Markdown 格式。
 """
 
-import trafilatura
 from bs4 import BeautifulSoup
 import re
 import time
