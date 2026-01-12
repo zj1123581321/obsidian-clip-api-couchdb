@@ -13,13 +13,33 @@ from ..services.notification import notifier
 from ..logger import logger
 
 class CouchDBService:
+    """CouchDB 存储服务
+
+    支持延迟初始化，只有在实际使用时才连接 CouchDB。
+    """
+
     def __init__(self):
-        self.server = couchdb.Server(config.couchdb_url)
-        self.db = self.server[config.couchdb_db_name]
+        self._server = None
+        self._db = None
         # 获取配置的剪藏路径，默认为 "Clippings"
         self.clippings_path = config.get('obsidian', {}).get('clippings_path', 'Clippings')
         # 确保路径不以斜杠开头或结尾
         self.clippings_path = self.clippings_path.strip('/')
+
+    def _ensure_connection(self):
+        """确保 CouchDB 连接已建立（延迟初始化）"""
+        if self._db is None:
+            if not config.couchdb_url:
+                raise Exception("CouchDB URL 未配置")
+            self._server = couchdb.Server(config.couchdb_url)
+            self._db = self._server[config.couchdb_db_name]
+            logger.info(f"[CouchDB] 已连接到数据库: {config.couchdb_db_name}")
+
+    @property
+    def db(self):
+        """获取数据库连接（延迟初始化）"""
+        self._ensure_connection()
+        return self._db
 
     def _generate_leaf_id(self) -> str:
         """生成叶子节点 ID"""
