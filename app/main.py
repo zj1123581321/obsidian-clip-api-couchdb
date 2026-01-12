@@ -10,8 +10,14 @@ from .api.routes import router
 from .config import config
 from .logger import logger, setup_logger
 
-# 根据配置初始化日志系统（启用颜色）
-setup_logger(debug=config.debug, colorize=True)
+# 根据配置初始化日志系统
+setup_logger(
+    level=config.log_level,
+    colorize=config.log_colorize,
+    rotation=config.log_rotation,
+    retention=config.log_retention,
+    compression=config.log_compression,
+)
 
 app = FastAPI(
     title="Obsidian Clip API",
@@ -34,7 +40,8 @@ app.include_router(router, prefix="/api")
 @app.on_event("startup")
 async def startup_event():
     """服务启动时的初始化"""
-    logger.info(f"[API] Obsidian Clip API 服务启动")
+    logger.info("[API] Obsidian Clip API 服务启动")
+    logger.info(f"[API] 日志级别: {config.log_level}")
     logger.info(f"[API] 存储方式: {config.storage_method}")
     logger.info(f"[API] 图床功能: {'启用' if config.get('picgo.enabled', False) else '禁用'}")
     logger.info(f"[API] LLM 处理: {'启用' if config.llm_enabled else '禁用'}")

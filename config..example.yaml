@@ -59,5 +59,13 @@ obsidian:
   clippings_path: "Clippings"  # 剪藏文章在 Obsidian 中的保存路径
   date_folder: true  # 是否按日期创建子文件夹: Clippings/2024/03/
 
+# 日志配置
+logging:
+  level: "INFO"  # 日志级别: DEBUG, INFO, WARNING, ERROR
+  colorize: true  # 控制台是否启用彩色输出
+  rotation: "10 MB"  # 日志轮转策略: 按大小 "10 MB" 或按时间 "1 day"
+  retention: "30 days"  # 日志保留时间
+  compression: "zip"  # 压缩格式: zip, gz, bz2, xz, tar
+
 # 调试模式
-debug: false  # 生产环境建议关闭 
+debug: false  # 生产环境建议关闭

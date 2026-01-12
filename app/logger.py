@@ -7,10 +7,16 @@
 - 错误日志单独存储
 - 拦截标准 logging 输出
 
+配置项（通过 config.yaml 覆盖）：
+- logging.level: 日志级别（DEBUG, INFO, WARNING, ERROR）
+- logging.colorize: 是否启用彩色输出
+- logging.rotation: 轮转策略（如 "10 MB" 或 "1 day"）
+- logging.retention: 保留时间（如 "30 days"）
+- logging.compression: 压缩格式（zip, gz, bz2, xz, tar）
+
 输出格式：2026-01-12 14:48:20 | INFO     | app.services.llm_service:process:128 - [LLM] 处理完成
 """
 
-import os
 import sys
 import logging
 import io
@@ -24,7 +30,6 @@ if sys.platform == "win32":
 
 # 日志目录配置
 LOG_DIR = Path(__file__).parent.parent / "logs"
-LOG_DIR.mkdir(exist_ok=True)
 
 
 class InterceptHandler(logging.Handler):
@@ -70,7 +75,7 @@ LOG_FORMAT_FILE = (
 
 
 def setup_logger(
-    debug: bool = False,
+    level: str = "INFO",
     colorize: bool = True,
     log_dir: Path = LOG_DIR,
     rotation: str = "10 MB",
@@ -80,7 +85,7 @@ def setup_logger(
     """配置日志系统
 
     Args:
-        debug: 是否开启调试模式，开启后输出 DEBUG 级别日志
+        level: 日志级别（DEBUG, INFO, WARNING, ERROR）
         colorize: 是否启用彩色输出
         log_dir: 日志文件目录
         rotation: 日志轮转策略，支持大小（如 "10 MB"）或时间（如 "1 day"）
@@ -93,8 +98,9 @@ def setup_logger(
     # 移除所有现有的 loguru handler
     logger.remove()
 
-    # 日志级别
-    level = "DEBUG" if debug else "INFO"
+    # 标准化日志级别
+    level = level.upper()
+    debug_mode = level == "DEBUG"
 
     # 1. 控制台输出（带颜色）
     logger.add(
@@ -103,7 +109,7 @@ def setup_logger(
         level=level,
         colorize=colorize,
         backtrace=True,
-        diagnose=debug,
+        diagnose=debug_mode,
         enqueue=True,
     )
 
@@ -118,7 +124,7 @@ def setup_logger(
         encoding="utf-8",
         enqueue=True,
         backtrace=True,
-        diagnose=debug,
+        diagnose=debug_mode,
     )
 
     # 3. 错误日志文件（仅 WARNING 及以上级别）
@@ -150,8 +156,8 @@ def setup_logger(
         logging_logger.propagate = False
 
 
-# 默认初始化（启用颜色）
-setup_logger(debug=False, colorize=True)
+# 默认初始化（基本配置，会被 main.py 中的配置覆盖）
+setup_logger()
 
 # 导出 logger 实例供其他模块使用
 __all__ = ["logger", "setup_logger", "LOG_DIR"]

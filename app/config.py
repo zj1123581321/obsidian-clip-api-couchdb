@@ -143,4 +143,31 @@ class Config:
         """LLM 处理语言，默认 auto"""
         return self.get('llm.language', 'auto')
 
-config = Config() 
+    # 日志配置
+    @property
+    def log_level(self) -> str:
+        """日志级别，默认 INFO"""
+        return self.get('logging.level', 'INFO')
+
+    @property
+    def log_colorize(self) -> bool:
+        """是否启用彩色日志输出，默认 True"""
+        return self.get('logging.colorize', True)
+
+    @property
+    def log_rotation(self) -> str:
+        """日志轮转策略，默认 10 MB"""
+        return self.get('logging.rotation', '10 MB')
+
+    @property
+    def log_retention(self) -> str:
+        """日志保留时间，默认 30 days"""
+        return self.get('logging.retention', '30 days')
+
+    @property
+    def log_compression(self) -> str:
+        """日志压缩格式，默认 zip"""
+        return self.get('logging.compression', 'zip')
+
+
+config = Config()
