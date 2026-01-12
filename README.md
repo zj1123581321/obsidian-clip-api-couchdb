@@ -6,6 +6,7 @@
 
 - 支持网页内容解析和 Markdown 转换
 - 自动提取图片并上传到 PicGo 图床（支持多种图床服务）
+- **外部 LLM 智能处理**：自动分类、摘要、金句提取等（默认开启）
 - 保存到 CouchDB 数据库，支持 Obsidian 同步 ,需要使用[ obsidian-livesync 插件](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/setup_own_server.md)
 - 企业微信通知（剪藏开始、成功、失败等状态）
 - 支持 API 鉴权
@@ -66,6 +67,13 @@ work_wechat:
   agent_id: "your-agent-id"
   corp_secret: "your-corp-secret"
   at_all: true
+
+# 外部 LLM 处理配置（可选，默认开启）
+llm:
+  enabled: true
+  url: "http://127.0.0.1:8080/api/v1/process"
+  api_key: "your-llm-api-key"
+  timeout: 180
 ```
 
 4. 启动服务：
@@ -121,11 +129,38 @@ curl -X POST http://localhost:8901/api/clip \
 - 本地存储
 - 等多种图床服务
 
+### 外部 LLM 处理
+
+启用后，剪藏的文章会自动调用外部 LLM API 进行智能处理，生成以下字段并存储到 Obsidian YAML 属性中：
+
+| 字段 | 说明 |
+|------|------|
+| category | 文章分类 |
+| new_title | AI 优化后的标题 |
+| score | 文章评分 |
+| score_plus / score_minus | 评分加分/减分项 |
+| entities_* | 实体识别（公司、VIP、行业等） |
+| paragraphs | 段落摘要 |
+| hidden_info | 隐藏信息/深度洞察 |
+| golden_sentences | 金句提取 |
+| processing_time | 处理耗时 |
+
+**配置项说明**：
+- `enabled`: 是否启用，默认 `true`
+- `url`: LLM API 完整地址
+- `api_key`: API 鉴权密钥（通过 X-API-Key 请求头传递）
+- `timeout`: 超时时间，默认 180 秒
+- `retry_count`: 重试次数，默认 2 次
+- `retry_delay`: 重试延迟，默认 2 秒
+
+**容错机制**：LLM 处理失败不会影响文章保存，只是不包含 LLM 生成的字段。
+
 ### 企业微信通知
 
 服务会在以下情况发送通知：
 - 开始剪藏时：显示时间、链接和图床状态
 - 剪藏成功时：显示标题、链接和保存路径
+- LLM 处理状态：显示分类结果和处理耗时
 - 发生错误时：显示错误信息
 
 ### 安全说明

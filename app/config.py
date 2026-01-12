@@ -107,4 +107,40 @@ class Config:
     def obsidian_date_folder(self) -> bool:
         return self.get('obsidian.date_folder', True)
 
+    # LLM 处理配置
+    @property
+    def llm_enabled(self) -> bool:
+        """是否启用 LLM 处理，默认开启"""
+        return self.get('llm.enabled', True)
+
+    @property
+    def llm_url(self) -> str:
+        """LLM API 地址"""
+        return self.get('llm.url', '')
+
+    @property
+    def llm_api_key(self) -> str:
+        """LLM API 密钥"""
+        return self.get('llm.api_key', '')
+
+    @property
+    def llm_timeout(self) -> int:
+        """LLM API 超时时间（秒），默认 180"""
+        return self.get('llm.timeout', 180)
+
+    @property
+    def llm_retry_count(self) -> int:
+        """LLM API 重试次数，默认 2"""
+        return self.get('llm.retry_count', 2)
+
+    @property
+    def llm_retry_delay(self) -> int:
+        """LLM API 重试延迟（秒），默认 2"""
+        return self.get('llm.retry_delay', 2)
+
+    @property
+    def llm_language(self) -> str:
+        """LLM 处理语言，默认 auto"""
+        return self.get('llm.language', 'auto')
+
 config = Config() 

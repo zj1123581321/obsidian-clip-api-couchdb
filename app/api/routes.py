@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel, HttpUrl
-from typing import Optional
+from typing import Optional, Dict, Any, List
 import asyncio
 from datetime import datetime
 from ..services.web_parser import web_parser
@@ -9,6 +9,7 @@ from ..services.image_uploader import image_uploader
 from ..services.couchdb_service import couchdb_service
 from ..services.obsidian_rest_api import obsidian_rest_api
 from ..services.notification import notifier
+from ..services.llm_service import llm_service, LLMResult
 from ..config import config
 
 router = APIRouter()
@@ -50,36 +51,94 @@ async def verify_api_key(x_api_key: str = Header(None)):
         )
     return True
 
-def generate_yaml_front_matter(url: str, title: str, meta_info: dict) -> str:
+def _format_yaml_list(items: List[str], indent: int = 2) -> str:
+    """格式化列表为 YAML 格式
+
+    Args:
+        items: 字符串列表
+        indent: 缩进空格数
+
+    Returns:
+        str: YAML 格式的列表字符串
+    """
+    if not items:
+        return "[]"
+
+    indent_str = " " * indent
+    lines = [f"\n{indent_str}- \"{item}\"" for item in items]
+    return "".join(lines)
+
+
+def _escape_yaml_string(value: str) -> str:
+    """转义 YAML 字符串中的特殊字符
+
+    Args:
+        value: 原始字符串
+
+    Returns:
+        str: 转义后的字符串
+    """
+    if not value:
+        return ""
+    # 如果包含特殊字符，用引号包裹
+    if any(c in value for c in [':', '#', '"', "'", '\n', '[', ']', '{', '}']):
+        return f'"{value.replace(chr(34), chr(92) + chr(34))}"'
+    return value
+
+
+def generate_yaml_front_matter(
+    url: str,
+    title: str,
+    meta_info: dict,
+    llm_result: Optional[LLMResult] = None
+) -> str:
     """生成 YAML front matter
-    
+
     Args:
         url: 原文链接
         title: 文章标题
         meta_info: 元数据信息，包含 author、date、description
-        
+        llm_result: LLM 处理结果（可选）
+
     Returns:
-        str: YAML front matter 文本，包含以下属性（按顺序）：
-        - url: 原文链接
-        - title: 文章标题
-        - description: 文章描述
-        - author: 文章作者
-        - published: 文章发布日期
-        - created: 剪藏时间（Obsidian 格式）
+        str: YAML front matter 文本
     """
     # 使用 Obsidian 格式的时间戳：YYYY-MM-DD HH:mm
     created = datetime.now().strftime("%Y-%m-%d %H:%M")
-    
-    return f"""---
-url: {url}
-title: {title}
-description: {meta_info.get('description', '')}
-author: {meta_info.get('author', '')}
-published: {meta_info.get('date', '')}
-created: {created}
----
 
-"""
+    # 基础字段
+    yaml_content = f"""---
+url: {url}
+title: {_escape_yaml_string(title)}
+description: {_escape_yaml_string(meta_info.get('description', ''))}
+author: {_escape_yaml_string(meta_info.get('author', ''))}
+published: {meta_info.get('date', '')}
+created: {created}"""
+
+    # 如果有 LLM 结果，添加 LLM 生成的字段
+    if llm_result and llm_result.success:
+        llm_data = llm_result.to_yaml_dict()
+
+        yaml_content += f"""
+category: {_escape_yaml_string(llm_data.get('category', ''))}
+new_title: {_escape_yaml_string(llm_data.get('new_title', ''))}
+score: {llm_data.get('score', 0)}
+score_plus: {_format_yaml_list(llm_data.get('score_plus', []))}
+score_minus: {_format_yaml_list(llm_data.get('score_minus', []))}
+entities_company_worldwide: {_format_yaml_list(llm_data.get('entities_company_worldwide', []))}
+entities_company_domestic: {_format_yaml_list(llm_data.get('entities_company_domestic', []))}
+entities_vip_worldwide: {_format_yaml_list(llm_data.get('entities_vip_worldwide', []))}
+entities_vip_domestic: {_format_yaml_list(llm_data.get('entities_vip_domestic', []))}
+entities_industry_upper: {_format_yaml_list(llm_data.get('entities_industry_upper', []))}
+entities_industry_mid: {_format_yaml_list(llm_data.get('entities_industry_mid', []))}
+entities_industry_lower: {_format_yaml_list(llm_data.get('entities_industry_lower', []))}
+paragraphs: {_format_yaml_list(llm_data.get('paragraphs', []))}
+hidden_info: {_format_yaml_list(llm_data.get('hidden_info', []))}
+golden_sentences: {_format_yaml_list(llm_data.get('golden_sentences', []))}
+processing_time: {llm_data.get('processing_time', 0.0)}"""
+
+    yaml_content += "\n---\n\n"
+    return yaml_content
 
 @router.post("/clip", response_model=ClipResponse)
 async def clip_article(
@@ -125,11 +184,26 @@ async def clip_article(
                 notifier.send_progress("图片处理", "图床功能未启用，保持原始图片链接")
             elif not images:
                 notifier.send_progress("图片处理", "文章中未发现图片")
-        
+
+        # 4. LLM 处理（可选）
+        llm_result = None
+        if llm_service.is_enabled():
+            notifier.send_progress("LLM 处理", "开始调用外部 LLM API")
+            llm_result = await llm_service.process(title, markdown)
+            if llm_result and llm_result.success:
+                notifier.send_progress(
+                    "LLM 处理",
+                    f"[OK] 处理成功，分类: {llm_result.category}，耗时: {llm_result.processing_time:.1f}秒"
+                )
+            else:
+                notifier.send_progress("LLM 处理", "[WARN] 处理失败或未启用，继续保存文章")
+        else:
+            notifier.send_progress("LLM 处理", "功能未启用")
+
         # 添加 YAML front matter 和 Obsidian 标签
-        full_content = generate_yaml_front_matter(str(request.url), title, meta_info) + markdown
-        
-        # 4. 根据配置选择存储方式
+        full_content = generate_yaml_front_matter(str(request.url), title, meta_info, llm_result) + markdown
+
+        # 5. 根据配置选择存储方式
         storage_method = config.storage_method
         
         if storage_method == 'rest_api':
@@ -216,7 +290,15 @@ async def health_check():
             "configured": wechat_configured,
             "status": "configured" if wechat_configured else "not_configured"
         }
-        
+
+        # 检查 LLM 服务
+        llm_enabled = llm_service.is_enabled()
+        result["services"]["llm"] = {
+            "enabled": llm_enabled,
+            "status": "configured" if llm_enabled else "disabled",
+            "url": config.llm_url if llm_enabled else None
+        }
+
     except Exception as e:
         result["status"] = "error"
         result["error"] = str(e)
