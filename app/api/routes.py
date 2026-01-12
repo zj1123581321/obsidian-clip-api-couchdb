@@ -66,8 +66,12 @@ def _format_yaml_list(items: List[str], indent: int = 2) -> str:
         return "[]"
 
     indent_str = " " * indent
-    lines = [f"\n{indent_str}- \"{item}\"" for item in items]
-    return "".join(lines)
+    escaped_items = []
+    for item in items:
+        # 转义双引号和反斜杠，确保 YAML 解析正确
+        escaped = item.replace('\\', '\\\\').replace('"', '\\"')
+        escaped_items.append(f'\n{indent_str}- "{escaped}"')
+    return "".join(escaped_items)
 
 
 def _escape_yaml_string(value: str) -> str:
@@ -81,9 +85,12 @@ def _escape_yaml_string(value: str) -> str:
     """
     if not value:
         return ""
-    # 如果包含特殊字符，用引号包裹
-    if any(c in value for c in [':', '#', '"', "'", '\n', '[', ']', '{', '}']):
-        return f'"{value.replace(chr(34), chr(92) + chr(34))}"'
+    # 如果包含特殊字符，用引号包裹并转义
+    special_chars = [':', '#', '"', "'", '\n', '[', ']', '{', '}', '\\']
+    if any(c in value for c in special_chars):
+        # 先转义反斜杠，再转义双引号
+        escaped = value.replace('\\', '\\\\').replace('"', '\\"')
+        return f'"{escaped}"'
     return value
 
 
@@ -109,11 +116,11 @@ def generate_yaml_front_matter(
 
     # 基础字段
     yaml_content = f"""---
-url: {url}
+url: {_escape_yaml_string(url)}
 title: {_escape_yaml_string(title)}
 description: {_escape_yaml_string(meta_info.get('description', ''))}
 author: {_escape_yaml_string(meta_info.get('author', ''))}
-published: {meta_info.get('date', '')}
+published: {_escape_yaml_string(meta_info.get('date', ''))}
 created: {created}"""
 
     # 如果有 LLM 结果，添加 LLM 生成的字段
