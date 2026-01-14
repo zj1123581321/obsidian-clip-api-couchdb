@@ -182,15 +182,20 @@ class NotificationService:
             lines.append("")
             lines.append("---")
             lines.append("")
-            lines.append("### 📊 AI 分析结果")
-            lines.append("")
 
-            if llm_result.category:
-                lines.append(f"**分类**: {llm_result.category}")
+            # 基础信息以引用块形式呈现
             if llm_result.new_title:
-                lines.append(f"**优化标题**: {llm_result.new_title}")
+                lines.append(f"> **优化标题**: {llm_result.new_title}")
+            if llm_result.category:
+                lines.append(f"> **分类**: {llm_result.category}")
             if llm_result.scoring and llm_result.scoring.total_score:
-                lines.append(f"**评分**: {llm_result.scoring.total_score}")
+                lines.append(f"> **评分**: {llm_result.scoring.total_score}")
+                if llm_result.scoring.plus_items:
+                    plus_text = "、".join(llm_result.scoring.plus_items)
+                    lines.append(f"> **➕ 加分**: {plus_text}")
+                if llm_result.scoring.minus_items:
+                    minus_text = "、".join(llm_result.scoring.minus_items)
+                    lines.append(f"> **➖ 减分**: {minus_text}")
 
             # 段落摘要
             if llm_result.paragraphs:
@@ -205,11 +210,6 @@ class NotificationService:
                 lines.append("### 🔍 隐藏信息")
                 for info in llm_result.hidden_info:
                     lines.append(f"- {info}")
-
-            # 处理耗时
-            if llm_result.processing_time:
-                lines.append("")
-                lines.append(f"⏱️ AI 处理耗时: {llm_result.processing_time:.1f}s")
 
         markdown_content = "\n".join(lines)
         self.send_markdown(markdown_content)
