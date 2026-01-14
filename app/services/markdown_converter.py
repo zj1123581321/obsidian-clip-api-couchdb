@@ -157,6 +157,51 @@ class MarkdownConverter:
         logger.debug(f"从微信 JS 变量中提取到文章内容，长度: {len(content)}")
         return content
 
+    def _extract_wechat_images(self, html: str) -> List[Tuple[str, str]]:
+        """从微信 picture_page_info_list 提取正文图片
+
+        微信公众号的正文图片存储在 JS 变量 picture_page_info_list 中，
+        而不是直接在 <img> 标签里。需要解析这个变量来获取图片 URL。
+
+        注意：每个图片对象包含多个 cdn_url（主图、水印图、分享封面等），
+        只需要提取每个对象开头的主图 cdn_url。
+
+        Args:
+            html: 原始 HTML
+
+        Returns:
+            List[Tuple[str, str]]: 图片 URL 和 alt 文本的列表
+        """
+        # 匹配 picture_page_info_list 变量
+        pattern = r"picture_page_info_list\s*=\s*(\[[\s\S]*?\])\s*\.slice"
+        match = re.search(pattern, html)
+        if not match:
+            return []
+
+        raw_list = match.group(1)
+
+        # 按图片对象分割（每个对象以 { 开头，包含 width/height/cdn_url）
+        # 只提取每个对象的第一个 cdn_url（主图），忽略 watermark_info 和 share_cover 中的
+        object_pattern = r"\{\s*width:[^}]*?cdn_url:\s*'([^']+)'"
+        main_urls = re.findall(object_pattern, raw_list)
+
+        images = []
+        seen = set()
+        for url in main_urls:
+            # 解码转义字符
+            url = url.replace('\\x26amp;', '&')
+            url = url.replace('\\x26', '&')
+            url = url.replace('\\x22', '"')
+
+            # 跳过已处理的 URL
+            if url in seen:
+                continue
+            seen.add(url)
+            images.append((url, ''))
+
+        logger.debug(f"从微信 picture_page_info_list 提取到 {len(images)} 张主图")
+        return images
+
     def _clean_wechat_content(self, html: str) -> str:
         """清理微信公众号文章的额外内容
 
@@ -207,15 +252,30 @@ class MarkdownConverter:
         try:
             start_time = time.time()
             logger.info("[MarkdownConverter] 开始转换 HTML 到 Markdown")
-            
+
             # 保存原始 HTML（调试用）
             debug_manager.save_file("original.html", html, prefix="md")
-            
+
+            # 先从原始 HTML 提取微信正文图片（在清理之前）
+            # 微信公众号的正文图片存储在 JS 变量中，清理后会丢失
+            wechat_images = self._extract_wechat_images(html)
+
             # 清理微信公众号文章的额外内容
             html = self._clean_wechat_content(html)
-            
-            # 提取图片信息
-            images = self._extract_images(html)
+
+            # 从清理后的 HTML 提取 img 标签中的图片
+            tag_images = self._extract_images(html)
+
+            # 合并图片列表，微信正文图片优先，去重
+            seen_urls = set()
+            images = []
+            for img_url, alt in wechat_images + tag_images:
+                if img_url not in seen_urls:
+                    seen_urls.add(img_url)
+                    images.append((img_url, alt))
+
+            if wechat_images:
+                logger.info(f"[MarkdownConverter] 图片来源: 微信JS={len(wechat_images)}, HTML标签={len(tag_images)}, 合并后={len(images)}")
             
             # 清理 HTML
             html = self._clean_html(html)
