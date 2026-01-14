@@ -307,10 +307,18 @@ class MarkdownConverter:
             
             # 处理连续的空行，最多保留两个换行
             markdown = re.sub(r'\n{3,}', '\n\n', markdown)
-            
+
             # 处理链接之间的换行，确保每个链接后有两个换行符
             markdown = re.sub(r'(\[.*?\]\(.*?\))\n', r'\1\n\n', markdown)
-            
+
+            # 如果有从微信 JS 变量提取的图片，但 Markdown 中没有图片标记，
+            # 需要将图片插入到正文中（因为 JS 变量提取模式下正文不包含图片）
+            if wechat_images and '![' not in markdown:
+                logger.debug(f"[MarkdownConverter] 正文无图片，插入 {len(wechat_images)} 张微信图片")
+                # 在文章开头插入图片
+                image_section = '\n\n'.join([f'![图片{i+1}]({url})' for i, (url, _) in enumerate(wechat_images)])
+                markdown = image_section + '\n\n' + markdown
+
             # 保存转换后的 Markdown（调试用）
             debug_manager.save_file("result.md", markdown, prefix="md")
             
