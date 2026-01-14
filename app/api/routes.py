@@ -328,11 +328,11 @@ async def health_check():
             "status": "configured" if picgo_enabled else "disabled"
         }
         
-        # 检查企业微信（如果配置）
-        wechat_configured = bool(config.work_wechat_corp_id)
+        # 检查企业微信通知
+        wechat_enabled = config.work_wechat_enabled and bool(config.work_wechat_webhook_url)
         result["services"]["work_wechat"] = {
-            "configured": wechat_configured,
-            "status": "configured" if wechat_configured else "not_configured"
+            "enabled": wechat_enabled,
+            "status": "enabled" if wechat_enabled else "disabled"
         }
 
         # 检查 LLM 服务

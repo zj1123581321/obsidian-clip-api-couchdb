@@ -18,6 +18,7 @@ dependencies = [
     "aiohttp>=3.9.3",
     "couchdb>=1.2",
     "loguru>=0.7.2",
+    "wecom-notifier>=0.2.0",
 ]
 
 [project.optional-dependencies]

@@ -32,32 +32,19 @@ class Config:
         return self.get('couchdb.db_name')
 
     @property
-    def work_wechat_corp_id(self) -> str:
-        return self.get('work_wechat.corp_id')
+    def work_wechat_enabled(self) -> bool:
+        """是否启用企业微信通知"""
+        return self.get('work_wechat.enabled', False)
 
     @property
-    def work_wechat_agent_id(self) -> str:
-        return self.get('work_wechat.agent_id')
-
-    @property
-    def work_wechat_corp_secret(self) -> str:
-        return self.get('work_wechat.corp_secret')
-
-    @property
-    def work_wechat_token(self) -> str:
-        return self.get('work_wechat.token')
-
-    @property
-    def work_wechat_encoding_aes_key(self) -> str:
-        return self.get('work_wechat.encoding_aes_key')
-
-    @property
-    def work_wechat_user_id(self) -> str:
-        return self.get('work_wechat.user_id')
+    def work_wechat_webhook_url(self) -> str:
+        """企业微信群机器人 Webhook URL"""
+        return self.get('work_wechat.webhook_url', '')
 
     @property
     def work_wechat_at_all(self) -> bool:
-        return self.get('work_wechat.at_all', True)
+        """发送消息时是否 @所有人"""
+        return self.get('work_wechat.at_all', False)
 
     @property
     def picgo_server(self) -> str:

@@ -28,15 +28,11 @@ couchdb:
   url: "http://username:password@your-couchdb-host:5984/"  # 包含用户名和密码的 URL
   db_name: "your-db-name"  # 数据库名称
 
-# 企业微信配置
+# 企业微信群机器人通知配置
 work_wechat:
-  corp_id: "your-corp-id"
-  agent_id: "your-agent-id"
-  corp_secret: "your-corp-secret"
-  token: ""  # 可选，如果需要接收消息
-  encoding_aes_key: ""  # 可选，如果需要接收消息
-  user_id: ""  # 可选，指定接收消息的用户
-  at_all: true  # 是否 @所有人
+  enabled: false  # 是否启用企业微信通知
+  webhook_url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR-WEBHOOK-KEY"  # 群机器人 Webhook 地址
+  at_all: false  # 发送消息时是否 @所有人
 
 # PicGo 配置
 picgo:

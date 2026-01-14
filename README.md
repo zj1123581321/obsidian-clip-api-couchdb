@@ -61,12 +61,11 @@ picgo:
   server: "http://localhost:36677"
   upload_path: "/upload?key=your-secret-key"  # 与 PicGo 服务配置的密钥一致
 
-# 企业微信配置
+# 企业微信群机器人通知配置
 work_wechat:
-  corp_id: "your-corp-id"
-  agent_id: "your-agent-id"
-  corp_secret: "your-corp-secret"
-  at_all: true
+  enabled: true
+  webhook_url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR-WEBHOOK-KEY"
+  at_all: false
 
 # 外部 LLM 处理配置（可选，默认开启）
 llm:
@@ -167,10 +166,16 @@ curl -X POST http://localhost:8901/api/clip \
 
 ### 企业微信通知
 
-服务会在以下情况发送通知：
+使用企业微信群机器人 Webhook 发送通知，需要先在企业微信群中添加群机器人并获取 Webhook 地址。
+
+**配置项说明**：
+- `enabled`: 是否启用通知，默认 `false`
+- `webhook_url`: 群机器人 Webhook 地址
+- `at_all`: 发送消息时是否 @所有人
+
+**通知时机**：
 - 开始剪藏时：显示时间、链接和图床状态
-- 剪藏成功时：显示标题、链接和保存路径
-- LLM 处理状态：显示分类结果和处理耗时
+- 剪藏成功时：显示标题、链接、保存路径和分类（Markdown 格式）
 - 发生错误时：显示错误信息
 
 ### 安全说明
