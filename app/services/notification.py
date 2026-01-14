@@ -159,8 +159,7 @@ class NotificationService:
         title: str,
         url: str,
         doc_path: str,
-        category: str = None,
-        processing_time: float = None
+        llm_result=None
     ):
         """发送剪藏成功通知
 
@@ -168,22 +167,49 @@ class NotificationService:
             title: 文章标题
             url: 原文链接
             doc_path: 保存路径
-            category: LLM 分类结果（可选）
-            processing_time: 处理耗时（可选）
+            llm_result: LLM 处理结果（LLMResult 对象，可选）
         """
         lines = [
-            "## 剪藏成功",
+            "## ✅ 剪藏成功",
             "",
             f"**标题**: {title}",
             f"**链接**: {url}",
             f"**路径**: {doc_path}",
         ]
 
-        if category:
-            lines.append(f"**分类**: {category}")
+        # 如果有 LLM 结果，追加 AI 分析内容
+        if llm_result and llm_result.success:
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+            lines.append("### 📊 AI 分析结果")
+            lines.append("")
 
-        if processing_time is not None:
-            lines.append(f"**耗时**: {processing_time:.1f}s")
+            if llm_result.category:
+                lines.append(f"**分类**: {llm_result.category}")
+            if llm_result.new_title:
+                lines.append(f"**优化标题**: {llm_result.new_title}")
+            if llm_result.scoring and llm_result.scoring.total_score:
+                lines.append(f"**评分**: {llm_result.scoring.total_score}")
+
+            # 段落摘要
+            if llm_result.paragraphs:
+                lines.append("")
+                lines.append("### 📝 段落摘要")
+                for paragraph in llm_result.paragraphs:
+                    lines.append(f"- {paragraph}")
+
+            # 隐藏信息
+            if llm_result.hidden_info:
+                lines.append("")
+                lines.append("### 🔍 隐藏信息")
+                for info in llm_result.hidden_info:
+                    lines.append(f"- {info}")
+
+            # 处理耗时
+            if llm_result.processing_time:
+                lines.append("")
+                lines.append(f"⏱️ AI 处理耗时: {llm_result.processing_time:.1f}s")
 
         markdown_content = "\n".join(lines)
         self.send_markdown(markdown_content)

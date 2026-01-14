@@ -257,12 +257,12 @@ async def clip_article(
                 notifier.send_progress("提醒", "检测到 CouchDB 配置，建议迁移到 REST API 方式")
             
             file_path = await obsidian_rest_api.save_document(title, full_content, str(request.url))
-            
-            notifier.send_message(
-                f"✅ 剪藏成功\n"
-                f"标题：{title}\n"
-                f"链接：{request.url}\n"
-                f"路径：{file_path}"
+
+            notifier.send_clip_success(
+                title=title,
+                url=str(request.url),
+                doc_path=file_path,
+                llm_result=llm_result
             )
             
             return ClipResponse(
@@ -277,12 +277,12 @@ async def clip_article(
             
             doc_id = couchdb_service.save_document(title, full_content, str(request.url))
             doc_path = couchdb_service.get_document_path(doc_id)
-            
-            notifier.send_message(
-                f"✅ 剪藏成功\n"
-                f"标题：{title}\n"
-                f"链接：{request.url}\n"
-                f"路径：{doc_path}"
+
+            notifier.send_clip_success(
+                title=title,
+                url=str(request.url),
+                doc_path=doc_path,
+                llm_result=llm_result
             )
             
             return ClipResponse(
