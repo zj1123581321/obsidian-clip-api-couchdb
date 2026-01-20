@@ -152,7 +152,6 @@ curl -X POST http://localhost:8901/api/clip \
 | paragraphs | 段落摘要 |
 | hidden_info | 隐藏信息/深度洞察 |
 | golden_sentences | 金句提取 |
-| processing_time | 处理耗时 |
 
 **配置项说明**：
 - `enabled`: 是否启用，默认 `true`

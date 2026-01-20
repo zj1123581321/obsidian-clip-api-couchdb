@@ -142,8 +142,7 @@ entities_industry_mid: {_format_yaml_list(llm_data.get('entities_industry_mid', 
 entities_industry_lower: {_format_yaml_list(llm_data.get('entities_industry_lower', []))}
 paragraphs: {_format_yaml_list(llm_data.get('paragraphs', []))}
 hidden_info: {_format_yaml_list(llm_data.get('hidden_info', []))}
-golden_sentences: {_format_yaml_list(llm_data.get('golden_sentences', []))}
-processing_time: {llm_data.get('processing_time', 0.0)}"""
+golden_sentences: {_format_yaml_list(llm_data.get('golden_sentences', []))}"""
 
     yaml_content += "\n---\n\n"
     return yaml_content
