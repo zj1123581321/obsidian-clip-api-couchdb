@@ -203,7 +203,7 @@ async def clip_article(
         llm_enabled = llm_service.is_enabled()
         if llm_enabled:
             notifier.send_progress("LLM 处理", "开始调用外部 LLM API")
-            tasks.append(llm_service.process(title, markdown))
+            tasks.append(llm_service.process(title, markdown, url=str(request.url)))
             task_names.append("llm_process")
         else:
             notifier.send_progress("LLM 处理", "功能未启用")

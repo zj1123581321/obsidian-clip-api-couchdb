@@ -109,12 +109,13 @@ class LLMService:
         self._reload_config()
         return self.enabled and bool(self.api_url)
 
-    async def process(self, title: str, content: str) -> Optional[LLMResult]:
+    async def process(self, title: str, content: str, url: Optional[str] = None) -> Optional[LLMResult]:
         """调用外部 LLM API 处理文章
 
         Args:
             title: 文章标题
             content: 文章 Markdown 内容
+            url: 文章原始 URL，传入后服务端可利用 URL 进行缓存
 
         Returns:
             LLMResult: 处理结果，失败返回 None
@@ -134,6 +135,10 @@ class LLMService:
             "content": content,
             "language": self.language
         }
+
+        # 传入 URL 以便服务端进行缓存
+        if url:
+            request_data["url"] = url
 
         # 重试逻辑
         last_error = None
