@@ -172,8 +172,8 @@ async def clip_article(
         picgo_enabled = config.get('picgo', {}).get('enabled', False)
         storage_method = config.storage_method
         notifier.send_message(
+            f"⏰ {current_time}\n"
             f"📥 开始剪藏\n"
-            f"时间：{current_time}\n"
             f"链接：{request.url}\n"
             f"解析：{config.content_fetcher_method}\n"
             f"存储：{storage_method.upper()}\n"
