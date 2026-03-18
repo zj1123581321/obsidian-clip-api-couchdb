@@ -10,7 +10,9 @@ from ..services.couchdb_service import couchdb_service
 from ..services.obsidian_rest_api import obsidian_rest_api
 from ..services.notification import notifier
 from ..services.llm_service import llm_service, LLMResult
+from ..services.url_parse_service import url_parse_service
 from ..config import config
+from ..logger import logger
 from ..utils.debug_manager import debug_manager
 
 router = APIRouter()
@@ -173,15 +175,28 @@ async def clip_article(
             f"📥 开始剪藏\n"
             f"时间：{current_time}\n"
             f"链接：{request.url}\n"
+            f"解析：{config.content_fetcher_method}\n"
             f"存储：{storage_method.upper()}\n"
             f"图床：{'已开启' if picgo_enabled else '未开启'}"
         )
         
-        # 1. 解析网页
-        title, html, cleaned_html, meta_info = web_parser.parse_url(str(request.url))
-        
-        # 2. 转换为 Markdown
-        markdown, images = markdown_converter.convert(cleaned_html)
+        # 1. 获取网页内容（内置解析 或 外部 URL Parse API）
+        fetcher_method = config.content_fetcher_method
+        if fetcher_method == 'external':
+            try:
+                title, markdown, images, meta_info = await url_parse_service.fetch_content(str(request.url))
+                notifier.send_progress("内容获取", f"[OK] 外部 API 解析完成: {title[:30]}...")
+            except Exception as e:
+                if config.content_fetcher_fallback:
+                    logger.warning(f"[UrlParse] 外部 API 失败，回退到内置解析: {e}")
+                    notifier.send_progress("内容获取", f"[WARN] 外部 API 失败，回退到内置解析: {str(e)[:80]}")
+                    title, html, cleaned_html, meta_info = web_parser.parse_url(str(request.url))
+                    markdown, images = markdown_converter.convert(cleaned_html)
+                else:
+                    raise
+        else:
+            title, html, cleaned_html, meta_info = web_parser.parse_url(str(request.url))
+            markdown, images = markdown_converter.convert(cleaned_html)
         
         # 3. 并行处理：图片上传 + LLM 处理
         # 创建并行任务
@@ -341,6 +356,21 @@ async def health_check():
             "status": "configured" if llm_enabled else "disabled",
             "url": config.llm_url if llm_enabled else None
         }
+
+        # 检查内容获取方式
+        fetcher_method = config.content_fetcher_method
+        if fetcher_method == 'external':
+            result["services"]["content_fetcher"] = {
+                "method": "external",
+                "url": config.content_fetcher_external_url,
+                "status": "configured" if config.content_fetcher_external_url else "not_configured",
+                "fallback": config.content_fetcher_fallback
+            }
+        else:
+            result["services"]["content_fetcher"] = {
+                "method": "builtin",
+                "status": "active"
+            }
 
     except Exception as e:
         result["status"] = "error"

@@ -72,4 +72,8 @@ htmlcov/
 /debug
 tmpclaude-*
 docker/export/output
+docker/deploy_targets.json
+docker/push_to_acr.bat
+docker/push_to_acr.sh
+docker/pull_and_deploy.sh
 nul

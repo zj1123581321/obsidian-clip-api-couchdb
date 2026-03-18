@@ -34,6 +34,17 @@ work_wechat:
   webhook_url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR-WEBHOOK-KEY"  # 群机器人 Webhook 地址
   at_all: false  # 发送消息时是否 @所有人
 
+# 内容获取方式配置
+content_fetcher:
+  method: "builtin"  # 可选值: "builtin"（内置解析）, "external"（外部 URL Parse API）
+  fallback: true  # external 失败时是否回退到 builtin
+  external:
+    url: "http://127.0.0.1:8000/api/v1/extract"  # 外部 URL Parse API 地址
+    api_key: ""  # API 密钥（Bearer token）
+    timeout: 60  # 请求超时时间（秒）
+    use_cache: true  # 是否使用外部 API 的缓存
+    force_fetcher: ""  # 强制使用的 fetcher（httpx/cdp/jina），留空自动选择
+
 # PicGo 配置
 picgo:
   enabled: false  # 是否启用图片上传到自己的图床

@@ -130,6 +130,22 @@ class Config:
         """LLM 处理语言，默认 auto"""
         return self.get('llm.language', 'auto')
 
+    # 内容获取方式配置
+    @property
+    def content_fetcher_method(self) -> str:
+        """内容获取方式：builtin 或 external"""
+        return self.get('content_fetcher.method', 'builtin')
+
+    @property
+    def content_fetcher_fallback(self) -> bool:
+        """external 失败时是否回退到 builtin"""
+        return self.get('content_fetcher.fallback', True)
+
+    @property
+    def content_fetcher_external_url(self) -> str:
+        """外部 URL Parse API 地址"""
+        return self.get('content_fetcher.external.url', '')
+
     # 日志配置
     @property
     def log_level(self) -> str:
